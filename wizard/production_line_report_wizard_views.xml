@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_line_report_wizard_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.line.report.wizard.form</field>
+        <field name="model">debytex.mrp.line.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte de producción por línea">
+                <group>
+                    <group>
+                        <field name="report_type" widget="radio"/>
+                        <field name="cutoff_datetime"/>
+                    </group>
+                </group>
+
+                <separator string="Líneas y órdenes incluidas"/>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom">
+                        <field name="workcenter_id" options="{'no_create': True}"/>
+                        <field name="production_id" options="{'no_create': True}"/>
+                    </list>
+                </field>
+
+                <separator string="Secciones del reporte técnico"/>
+                <group col="4">
+                    <field name="include_general_data"/>
+                    <field name="include_parameters"/>
+                    <field name="include_additive"/>
+                    <field name="include_production"/>
+                    <field name="include_quality"/>
+                    <field name="include_waste"/>
+                    <field name="include_incidents"/>
+                    <field name="include_adjustments"/>
+                    <field name="include_stops"/>
+                    <field name="include_handover"/>
+                    <field name="include_signatures"/>
+                </group>
+
+                <footer>
+                    <button name="action_create_report" string="Crear y revisar" type="object" class="btn-primary"/>
+                    <button name="action_create_and_print" string="Generar PDF" type="object" class="btn-secondary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mrp_line_report_wizard" model="ir.actions.act_window">
+        <field name="name">Reporte de producción por línea</field>
+        <field name="res_model">debytex.mrp.line.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_mrp_line_report_wizard"
+              name="Reporte de producción por línea"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_line_report_wizard"
+              sequence="95"
+              groups="mrp.group_mrp_user"/>
+
+    <menuitem id="menu_mrp_line_report_history"
+              name="Capturas por línea"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_line_report"
+              sequence="96"
+              groups="mrp.group_mrp_user"/>
+</odoo>

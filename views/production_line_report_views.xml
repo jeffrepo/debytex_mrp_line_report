@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_line_report_list" model="ir.ui.view">
+        <field name="name">debytex.mrp.line.report.list</field>
+        <field name="model">debytex.mrp.line.report</field>
+        <field name="arch" type="xml">
+            <list string="Reportes de producción por línea" default_order="cutoff_datetime desc">
+                <field name="name"/>
+                <field name="cutoff_datetime"/>
+                <field name="report_type"/>
+                <field name="active_line_count"/>
+                <field name="total_rolls_requested"/>
+                <field name="total_rolls_missing"/>
+                <field name="created_by_id"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'generated'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_line_report_search" model="ir.ui.view">
+        <field name="name">debytex.mrp.line.report.search</field>
+        <field name="model">debytex.mrp.line.report</field>
+        <field name="arch" type="xml">
+            <search string="Buscar reportes por línea">
+                <field name="name"/>
+                <field name="cutoff_datetime"/>
+                <field name="created_by_id"/>
+                <filter name="filter_draft" string="Borradores" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_generated" string="Generados" domain="[('state', '=', 'generated')]"/>
+                <separator/>
+                <filter name="group_by_state" string="Estado" context="{'group_by': 'state'}"/>
+                <filter name="group_by_month" string="Mes de corte" context="{'group_by': 'cutoff_datetime:month'}"/>
+                <filter name="group_by_company" string="Compañía" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_mrp_line_report_line_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.line.report.line.form</field>
+        <field name="model">debytex.mrp.line.report.line</field>
+        <field name="arch" type="xml">
+            <form string="Captura de producción por línea">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="workcenter_id"/>
+                        <h1><field name="workcenter_id" options="{'no_create': True}"/></h1>
+                    </div>
+                    <group>
+                        <group string="Origen">
+                            <field name="production_id" options="{'no_create': True}"/>
+                            <field name="workorder_id" options="{'no_create': True}"/>
+                            <field name="turn_closure_id" options="{'no_create': True}"/>
+                            <field name="shift"/>
+                        </group>
+                        <group string="Responsables">
+                            <field name="leader_id" options="{'no_create': True}"/>
+                            <field name="supervisor_id" options="{'no_create': True}"/>
+                            <field name="report_status" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Datos generales" name="general_data">
+                            <group>
+                                <group>
+                                    <field name="production_name"/>
+                                    <field name="sale_order_name"/>
+                                    <field name="lot_name"/>
+                                </group>
+                                <group>
+                                    <field name="product_name"/>
+                                    <field name="client_name"/>
+                                    <field name="color"/>
+                                    <field name="color_code"/>
+                                    <field name="color_percentage"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Parámetros" name="parameters">
+                            <group>
+                                <group>
+                                    <field name="target_grammage"/>
+                                    <field name="target_width"/>
+                                    <field name="pump_rpm"/>
+                                    <field name="suction"/>
+                                    <field name="cooling"/>
+                                    <field name="range_hood"/>
+                                    <field name="belt_speed"/>
+                                    <field name="winder_speed"/>
+                                </group>
+                                <group>
+                                    <field name="spinning_box"/>
+                                    <field name="upper_calender"/>
+                                    <field name="lower_calender"/>
+                                    <field name="calender_pressure"/>
+                                    <field name="temperatures"/>
+                                    <field name="k_constant" readonly="1"/>
+                                    <field name="additive"/>
+                                    <field name="additive_code"/>
+                                    <field name="additive_percentage"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Producción" name="production">
+                            <group>
+                                <group string="Datos manuales">
+                                    <field name="actual_grammage"/>
+                                    <field name="actual_width"/>
+                                    <field name="roll_length"/>
+                                    <field name="rolls_requested"/>
+                                    <field name="current_roll"/>
+                                    <field name="rolls_per_axis"/>
+                                    <field name="time_mode" widget="radio"/>
+                                    <field name="manual_minutes_per_roll"
+                                           invisible="time_mode != 'manual'"/>
+                                </group>
+                                <group string="Resultados automáticos">
+                                    <field name="rolls_missing" readonly="1"/>
+                                    <field name="pending_axes" readonly="1"/>
+                                    <field name="minutes_per_axis" readonly="1"/>
+                                    <field name="remaining_hours" readonly="1"/>
+                                    <field name="remaining_time_text" readonly="1"/>
+                                    <field name="estimated_finish" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Calidad" name="quality">
+                            <group>
+                                <group>
+                                    <field name="quality_grammage"/>
+                                    <field name="resistance_md"/>
+                                    <field name="resistance_cd"/>
+                                </group>
+                                <group>
+                                    <field name="elongation_md"/>
+                                    <field name="elongation_cd"/>
+                                </group>
+                            </group>
+                            <field name="quality_observations" placeholder="Observaciones de calidad..."/>
+                        </page>
+
+                        <page string="Mermas" name="waste">
+                            <field name="waste_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="waste_type"/>
+                                    <field name="quantity"/>
+                                    <field name="cause"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Incidencias" name="incidents">
+                            <field name="incident_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="time_text"/>
+                                    <field name="description"/>
+                                    <field name="action_taken"/>
+                                    <field name="result"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Ajustes" name="adjustments">
+                            <field name="adjustment_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="time_text"/>
+                                    <field name="adjustment"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Paros" name="stops">
+                            <field name="stop_ids">
+                                <list editable="bottom">
+                                    <field name="start_datetime"/>
+                                    <field name="end_datetime"/>
+                                    <field name="duration_minutes" readonly="1"/>
+                                    <field name="reason"/>
+                                    <field name="source_productivity_id" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Entrega de turno" name="handover">
+                            <group>
+                                <field name="line_conditions" placeholder="Condiciones de la línea..."/>
+                                <field name="pending_notes" placeholder="Pendientes..."/>
+                                <field name="recommendations" placeholder="Recomendaciones o comentario general..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mrp_line_report_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.line.report.form</field>
+        <field name="model">debytex.mrp.line.report</field>
+        <field name="arch" type="xml">
+            <form string="Reporte de producción por línea">
+                <header>
+                    <button name="action_print_report" string="Generar PDF" type="object" class="btn-primary"/>
+                    <button name="action_set_draft" string="Regresar a borrador" type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,generated"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-industry" type="object" name="action_print_report">
+                            <field name="active_line_count" widget="statinfo" string="Líneas con captura"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="report_type"/>
+                            <field name="cutoff_datetime"/>
+                            <field name="generated_at" readonly="1" invisible="not generated_at"/>
+                        </group>
+                        <group>
+                            <field name="created_by_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <group string="Secciones del reporte técnico" col="4">
+                        <field name="include_general_data"/>
+                        <field name="include_parameters"/>
+                        <field name="include_additive"/>
+                        <field name="include_production"/>
+                        <field name="include_quality"/>
+                        <field name="include_waste"/>
+                        <field name="include_incidents"/>
+                        <field name="include_adjustments"/>
+                        <field name="include_stops"/>
+                        <field name="include_handover"/>
+                        <field name="include_signatures"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Líneas incluidas">
+                            <field name="line_ids" context="{'form_view_ref': 'debytex_mrp_line_report.view_mrp_line_report_line_form'}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="workcenter_id"/>
+                                    <field name="production_id"/>
+                                    <field name="shift"/>
+                                    <field name="product_name"/>
+                                    <field name="client_name"/>
+                                    <field name="rolls_requested"/>
+                                    <field name="current_roll"/>
+                                    <field name="rolls_missing" readonly="1"/>
+                                    <field name="remaining_time_text" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Resumen">
+                            <group>
+                                <field name="total_rolls_requested" readonly="1"/>
+                                <field name="total_current_rolls" readonly="1"/>
+                                <field name="total_rolls_missing" readonly="1"/>
+                                <field name="active_line_count" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mrp_line_report" model="ir.actions.act_window">
+        <field name="name">Capturas por línea</field>
+        <field name="res_model">debytex.mrp.line.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mrp_line_report_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cree el primer reporte de producción por línea.</p>
+            <p>Use el asistente para precargar las líneas y sus órdenes activas.</p>
+        </field>
+    </record>
+</odoo>

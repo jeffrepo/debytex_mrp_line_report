@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_line_report_user,Reporte por línea usuario,model_debytex_mrp_line_report,mrp.group_mrp_user,1,1,1,0
+access_mrp_line_report_manager,Reporte por línea responsable,model_debytex_mrp_line_report,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_line_user,Detalle por línea usuario,model_debytex_mrp_line_report_line,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_line_manager,Detalle por línea responsable,model_debytex_mrp_line_report_line,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_waste_user,Merma por línea usuario,model_debytex_mrp_line_report_waste,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_waste_manager,Merma por línea responsable,model_debytex_mrp_line_report_waste,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_incident_user,Incidencia por línea usuario,model_debytex_mrp_line_report_incident,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_incident_manager,Incidencia por línea responsable,model_debytex_mrp_line_report_incident,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_adjustment_user,Ajuste por línea usuario,model_debytex_mrp_line_report_adjustment,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_adjustment_manager,Ajuste por línea responsable,model_debytex_mrp_line_report_adjustment,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_stop_user,Paro por línea usuario,model_debytex_mrp_line_report_stop,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_stop_manager,Paro por línea responsable,model_debytex_mrp_line_report_stop,mrp.group_mrp_manager,1,1,1,1
+access_mrp_line_report_wizard_user,Wizard reporte por línea,model_debytex_mrp_line_report_wizard,mrp.group_mrp_user,1,1,1,1
+access_mrp_line_report_wizard_line_user,Línea wizard reporte por línea,model_debytex_mrp_line_report_wizard_line,mrp.group_mrp_user,1,1,1,1
