@@ -138,7 +138,7 @@
                                     <td><t t-esc="displayLineReportValue(waste.quantity)"/></td>
                                     <td><t t-esc="displayLineReportValue(waste.cause)"/></td>
                                 </tr>
-                                <tr t-if="not r.waste.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
+                                <tr t-if="!r.waste.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
                             </tbody>
                         </table>
                     </section>
@@ -154,7 +154,7 @@
                                     <td><t t-esc="displayLineReportValue(incident.action)"/></td>
                                     <td><t t-esc="displayLineReportValue(incident.result)"/></td>
                                 </tr>
-                                <tr t-if="not r.incidents.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
+                                <tr t-if="!r.incidents.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
                             </tbody>
                         </table>
                     </section>
@@ -169,7 +169,7 @@
                                     <td><t t-esc="displayLineReportValue(adjustment.adjustment)"/></td>
                                     <td><t t-esc="displayLineReportValue(adjustment.reason)"/></td>
                                 </tr>
-                                <tr t-if="not r.adjustments.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
+                                <tr t-if="!r.adjustments.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
                             </tbody>
                         </table>
                     </section>
@@ -185,7 +185,7 @@
                                     <td><t t-esc="displayLineReportValue(stop.duration, ' min')"/></td>
                                     <td><t t-esc="displayLineReportValue(stop.reason)"/></td>
                                 </tr>
-                                <tr t-if="not r.stops.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
+                                <tr t-if="!r.stops.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
                             </tbody>
                         </table>
                     </section>
