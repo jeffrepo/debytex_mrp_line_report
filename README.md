@@ -14,6 +14,10 @@ las líneas de producción de Debytex/ECOWOOL.
   proporcionados por `custom_novici`.
 - Importación automática de paros registrados en
   `mrp.workcenter.productivity` para el turno activo.
+- Extensión del tablero de producción de `custom_novici`: al abrir una orden
+  muestra los apartados técnicos completos de la última captura asociada.
+  Cuando todavía no existe una captura, presenta los datos actuales
+  disponibles e identifica claramente el detalle como información en vivo.
 
 ## Regla de cálculo
 
