@@ -5,13 +5,13 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <!-- El reporte usa un encabezado propio dentro de cada página. -->
-        <field name="margin_top">12</field>
+        <!-- Reserva el bloque corporativo completo y comienza el título debajo. -->
+        <field name="margin_top">65</field>
         <field name="margin_bottom">12</field>
         <field name="margin_left">10</field>
         <field name="margin_right">10</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">0</field>
+        <field name="header_spacing">8</field>
         <field name="dpi">90</field>
     </record>
 
