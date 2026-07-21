@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="debytex_mrp_line_report.MrpDashboardReport"
+       t-inherit="custom_novici.MrpDashboard"
+       t-inherit-mode="extension">
+        <xpath expr="//div[contains(@class, 'dash-modal-detail')]" position="replace">
+            <div class="dash-modal dash-modal-detail debytex-line-report-modal"
+                 t-on-click.stop=""
+                 t-if="state.selectedDetail">
+                <t t-set="mo" t-value="state.selectedDetail"/>
+
+                <div class="detail-header debytex-detail-header">
+                    <div class="detail-header-left">
+                        <span t-attf-class="detail-badge state-#{mo.state_label}">
+                            <t t-if="mo.state_label == 'Produciendo'">⚙️</t>
+                            <t t-elif="mo.state_label == 'Producido'">✅</t>
+                            <t t-elif="mo.state_label == 'Confirmado'">📦</t>
+                            <t t-else="">⏳</t>
+                            <t t-esc="mo.state_label"/>
+                        </span>
+                        <span class="debytex-order-reference">
+                            <t t-esc="mo.name"/>
+                        </span>
+                    </div>
+                    <button class="btn-close-modal" t-on-click="closeDetailModal">✕</button>
+                </div>
+
+                <div t-if="state.lineReportLoading" class="debytex-report-loading">
+                    <span class="debytex-report-spinner"/>
+                    Cargando información completa del reporte…
+                </div>
+
+                <div t-elif="state.lineReportError" class="debytex-report-error">
+                    <strong>No fue posible cargar el reporte.</strong>
+                    <span t-esc="state.lineReportError"/>
+                </div>
+
+                <div t-elif="state.selectedLineReport" class="debytex-report-content">
+                    <t t-set="r" t-value="state.selectedLineReport"/>
+
+                    <div class="debytex-report-title-block">
+                        <div>
+                            <h2>Reporte de <t t-esc="r.workcenter_name or 'línea de producción'"/></h2>
+                            <p>
+                                <strong>Estado:</strong>
+                                <t t-esc="displayLineReportValue(r.report_status)"/>
+                                <span class="debytex-meta-separator">•</span>
+                                <strong>Hora de corte:</strong>
+                                <t t-esc="displayLineReportValue(r.cutoff_datetime)"/>
+                            </p>
+                        </div>
+                        <span t-attf-class="debytex-source-badge source-#{r.source_type}">
+                            <t t-esc="r.source_label"/>
+                        </span>
+                    </div>
+
+                    <section class="debytex-report-section">
+                        <h3>1. Identificación y datos generales</h3>
+                        <table class="debytex-report-table">
+                            <tbody>
+                                <tr>
+                                    <th>Orden / lote</th>
+                                    <td><t t-esc="displayLineReportValue(r.production_name)"/> / <t t-esc="displayLineReportValue(r.lot_name)"/></td>
+                                    <th>Cliente</th>
+                                    <td><t t-esc="displayLineReportValue(r.client_name)"/></td>
+                                </tr>
+                                <tr>
+                                    <th>Producto</th>
+                                    <td colspan="3"><t t-esc="displayLineReportValue(r.product_name)"/></td>
+                                </tr>
+                                <tr>
+                                    <th>Especificación</th>
+                                    <td>
+                                        <t t-esc="displayOptionalLineReportValue(r.target_grammage, ' g/m²')"/> ·
+                                        <t t-esc="displayOptionalLineReportValue(r.target_width, ' cm')"/> ·
+                                        <t t-esc="displayOptionalLineReportValue(r.roll_length, ' m')"/>
+                                    </td>
+                                    <th>Color / código</th>
+                                    <td><t t-esc="displayLineReportValue(r.color)"/> / <t t-esc="displayLineReportValue(r.color_code)"/></td>
+                                </tr>
+                                <tr>
+                                    <th>Turno</th>
+                                    <td><t t-esc="displayLineReportValue(r.shift_label)"/></td>
+                                    <th>Líder / supervisor</th>
+                                    <td><t t-esc="displayLineReportValue(r.leader_name)"/> / <t t-esc="displayLineReportValue(r.supervisor_name)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>2. Parámetros de operación registrados</h3>
+                        <table class="debytex-report-table">
+                            <tbody>
+                                <tr><th>Gramaje objetivo</th><td><t t-esc="displayOptionalLineReportValue(r.target_grammage, ' g/m²')"/></td><th>RPM bomba</th><td><t t-esc="displayOptionalLineReportValue(r.pump_rpm)"/></td></tr>
+                                <tr><th>Suction</th><td><t t-esc="displayLineReportValue(r.suction)"/></td><th>Cooling</th><td><t t-esc="displayLineReportValue(r.cooling)"/></td></tr>
+                                <tr><th>Range Hood</th><td><t t-esc="displayLineReportValue(r.range_hood)"/></td><th>Velocidad de banda</th><td><t t-esc="displayOptionalLineReportValue(r.belt_speed, ' m/min')"/></td></tr>
+                                <tr><th>Velocidad Winder</th><td><t t-esc="displayOptionalLineReportValue(r.winder_speed, ' m/min')"/></td><th>Constante K</th><td><t t-esc="displayOptionalLineReportValue(r.k_constant, '', 4)"/></td></tr>
+                                <tr><th>Spinning Box</th><td><t t-esc="displayOptionalLineReportValue(r.spinning_box)"/></td><th>Temperaturas</th><td><t t-esc="displayLineReportValue(r.temperatures)"/></td></tr>
+                                <tr><th>Calandras superior / inferior</th><td><t t-esc="displayOptionalLineReportValue(r.upper_calender)"/> / <t t-esc="displayOptionalLineReportValue(r.lower_calender, ' °C')"/></td><th>Presión</th><td><t t-esc="displayLineReportValue(r.calender_pressure)"/></td></tr>
+                                <tr><th>Aditivo / código</th><td><t t-esc="displayLineReportValue(r.additive)"/> / <t t-esc="displayLineReportValue(r.additive_code)"/></td><th>Porcentaje</th><td><t t-esc="displayOptionalLineReportValue(r.additive_percentage, '%')"/></td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>3. Resultado de producción al corte</h3>
+                        <table class="debytex-report-table">
+                            <tbody>
+                                <tr><th>Gramaje real</th><td><t t-esc="displayOptionalLineReportValue(r.actual_grammage, ' g/m²')"/></td><th>Ancho real</th><td><t t-esc="displayOptionalLineReportValue(r.actual_width, ' cm')"/></td></tr>
+                                <tr><th>Longitud del rollo</th><td><t t-esc="displayOptionalLineReportValue(r.roll_length, ' m')"/></td><th>Rollos solicitados</th><td><t t-esc="displayLineReportValue(r.rolls_requested)"/></td></tr>
+                                <tr><th>Rollo actual / en curso</th><td><t t-esc="displayLineReportValue(r.current_roll)"/></td><th>Rollos faltantes</th><td><t t-esc="displayLineReportValue(r.rolls_missing)"/></td></tr>
+                                <tr><th>Rollos por eje</th><td><t t-esc="displayLineReportValue(r.rolls_per_axis)"/></td><th>Ejes pendientes</th><td><t t-esc="displayLineReportValue(r.pending_axes)"/></td></tr>
+                                <tr><th>Minutos por eje</th><td><t t-esc="displayLineReportValue(r.minutes_per_axis, '', 2)"/></td><th>Tiempo restante</th><td><t t-esc="displayLineReportValue(r.remaining_time_text)"/></td></tr>
+                                <tr><th>Horas decimales</th><td><t t-esc="displayLineReportValue(r.remaining_hours, '', 4)"/></td><th>Finalización estimada</th><td><t t-esc="displayLineReportValue(r.estimated_finish)"/></td></tr>
+                            </tbody>
+                        </table>
+                        <div class="debytex-report-note">La finalización estimada supone continuidad de producción desde el corte y no descuenta paros futuros.</div>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>4. Calidad</h3>
+                        <table class="debytex-report-table">
+                            <tbody>
+                                <tr><th>Gramaje real</th><td><t t-esc="displayOptionalLineReportValue(r.quality_grammage)"/></td><th>Resistencia MD / CD</th><td><t t-esc="displayOptionalLineReportValue(r.resistance_md)"/> / <t t-esc="displayOptionalLineReportValue(r.resistance_cd)"/></td></tr>
+                                <tr><th>Elongación MD / CD</th><td><t t-esc="displayOptionalLineReportValue(r.elongation_md)"/> / <t t-esc="displayOptionalLineReportValue(r.elongation_cd)"/></td><th>Observaciones</th><td><t t-esc="displayLineReportValue(r.quality_observations)"/></td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>5. Mermas</h3>
+                        <table class="debytex-report-table debytex-list-table">
+                            <thead><tr><th>Tipo</th><th>Cantidad</th><th>Causa</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="r.waste" t-as="waste" t-key="waste_index">
+                                    <td><t t-esc="displayLineReportValue(waste.type)"/></td>
+                                    <td><t t-esc="displayLineReportValue(waste.quantity)"/></td>
+                                    <td><t t-esc="displayLineReportValue(waste.cause)"/></td>
+                                </tr>
+                                <tr t-if="not r.waste.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>6. Incidencias</h3>
+                        <table class="debytex-report-table debytex-list-table">
+                            <thead><tr><th>Hora</th><th>Descripción</th><th>Acción tomada</th><th>Resultado</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="r.incidents" t-as="incident" t-key="incident_index">
+                                    <td><t t-esc="displayLineReportValue(incident.time)"/></td>
+                                    <td><t t-esc="displayLineReportValue(incident.description)"/></td>
+                                    <td><t t-esc="displayLineReportValue(incident.action)"/></td>
+                                    <td><t t-esc="displayLineReportValue(incident.result)"/></td>
+                                </tr>
+                                <tr t-if="not r.incidents.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>7. Ajustes realizados</h3>
+                        <table class="debytex-report-table debytex-list-table">
+                            <thead><tr><th>Hora</th><th>Ajuste</th><th>Motivo</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="r.adjustments" t-as="adjustment" t-key="adjustment_index">
+                                    <td><t t-esc="displayLineReportValue(adjustment.time)"/></td>
+                                    <td><t t-esc="displayLineReportValue(adjustment.adjustment)"/></td>
+                                    <td><t t-esc="displayLineReportValue(adjustment.reason)"/></td>
+                                </tr>
+                                <tr t-if="not r.adjustments.length"><td colspan="3" class="debytex-empty-row">No se registraron datos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>8. Paros de línea</h3>
+                        <table class="debytex-report-table debytex-list-table">
+                            <thead><tr><th>Inicio</th><th>Fin</th><th>Duración</th><th>Motivo</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="r.stops" t-as="stop" t-key="stop_index">
+                                    <td><t t-esc="displayLineReportValue(stop.start)"/></td>
+                                    <td><t t-esc="displayLineReportValue(stop.end)"/></td>
+                                    <td><t t-esc="displayLineReportValue(stop.duration, ' min')"/></td>
+                                    <td><t t-esc="displayLineReportValue(stop.reason)"/></td>
+                                </tr>
+                                <tr t-if="not r.stops.length"><td colspan="4" class="debytex-empty-row">No se registraron datos.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="debytex-report-section">
+                        <h3>9. Observaciones y entrega de turno</h3>
+                        <div class="debytex-handover-grid">
+                            <div><strong>Condiciones de la línea</strong><p><t t-esc="displayLineReportValue(r.line_conditions)"/></p></div>
+                            <div><strong>Pendientes</strong><p><t t-esc="displayLineReportValue(r.pending_notes)"/></p></div>
+                            <div><strong>Recomendaciones</strong><p><t t-esc="displayLineReportValue(r.recommendations)"/></p></div>
+                        </div>
+                    </section>
+
+                    <div class="debytex-signatures">
+                        <div><span>Elaboró / Líder de turno</span><strong><t t-esc="displayLineReportValue(r.leader_name)"/></strong></div>
+                        <div><span>Validó / Supervisor</span><strong><t t-esc="displayLineReportValue(r.supervisor_name)"/></strong></div>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </t>
+</templates>
