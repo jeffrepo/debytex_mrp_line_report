@@ -5,7 +5,9 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">12</field>
+        <!-- Reserva espacio para el encabezado corporativo personalizado
+             utilizado por web.external_layout en Debytex. -->
+        <field name="margin_top">50</field>
         <field name="margin_bottom">12</field>
         <field name="margin_left">10</field>
         <field name="margin_right">10</field>
