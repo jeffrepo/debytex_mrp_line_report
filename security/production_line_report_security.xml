@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_mrp_line_report_company" model="ir.rule">
+        <field name="name">Reportes por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="rule_mrp_line_report_line_company" model="ir.rule">
+        <field name="name">Detalles por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report_line"/>
+        <field name="domain_force">[('report_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="rule_mrp_line_report_waste_company" model="ir.rule">
+        <field name="name">Mermas por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report_waste"/>
+        <field name="domain_force">[('report_line_id.report_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="rule_mrp_line_report_incident_company" model="ir.rule">
+        <field name="name">Incidencias por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report_incident"/>
+        <field name="domain_force">[('report_line_id.report_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="rule_mrp_line_report_adjustment_company" model="ir.rule">
+        <field name="name">Ajustes por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report_adjustment"/>
+        <field name="domain_force">[('report_line_id.report_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="rule_mrp_line_report_stop_company" model="ir.rule">
+        <field name="name">Paros por línea de la compañía</field>
+        <field name="model_id" ref="model_debytex_mrp_line_report_stop"/>
+        <field name="domain_force">[('report_line_id.report_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+</odoo>

@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_production_line_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page debytex_line_report">
+                        <style>
+                            .debytex_line_report { color: #1f2937; font-size: 11px; }
+                            .debytex_report_header { border-bottom: 3px solid #1f4e79; margin-bottom: 14px; padding-bottom: 9px; }
+                            .debytex_report_header h2 { color: #1f4e79; margin: 0 0 4px 0; }
+                            .debytex_meta { color: #6b7280; }
+                            .debytex_section { margin-top: 14px; page-break-inside: avoid; }
+                            .debytex_section h3 { background: #eef4fb; border-left: 5px solid #1f4e79; color: #173b5c; font-size: 13px; margin: 0 0 8px 0; padding: 7px 9px; }
+                            .debytex_table { border-collapse: collapse; width: 100%; }
+                            .debytex_table th, .debytex_table td { border: 1px solid #cbd5e1; padding: 5px 6px; vertical-align: top; }
+                            .debytex_table th { background: #eef4fb; color: #173b5c; text-align: left; }
+                            .debytex_card { border: 1px solid #bcd8c2; border-radius: 8px; display: inline-block; margin: 0 1% 10px 0; padding: 10px; vertical-align: top; width: 47%; }
+                            .debytex_card h4 { border-bottom: 1px solid #cfe2d4; color: #236f46; margin: 0 0 8px 0; padding-bottom: 6px; }
+                            .debytex_pill { border-radius: 12px; color: #fff; float: right; font-size: 9px; padding: 3px 7px; }
+                            .debytex_pill_empty { background: #6b7280; }
+                            .debytex_pill_progress { background: #ca8a04; }
+                            .debytex_pill_done { background: #16a34a; }
+                            .debytex_note { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; margin-top: 7px; padding: 8px; }
+                            .debytex_signature { border-top: 1px solid #555; display: inline-block; margin: 42px 3% 0 0; padding-top: 6px; text-align: center; width: 29%; }
+                            .debytex_page_break { page-break-before: always; }
+                        </style>
+
+                        <t t-if="doc.report_type in ('general', 'both')">
+                            <div class="debytex_report_header">
+                                <h2>Reporte de Producción en Piso</h2>
+                                <div class="debytex_meta">
+                                    <strong t-esc="doc.name"/> · Corte:
+                                    <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
+                                </div>
+                            </div>
+                        </t>
+
+                        <t t-if="doc.report_type in ('general', 'both')">
+                            <div class="debytex_section">
+                                <h3>Resumen ejecutivo</h3>
+                                <table class="debytex_table">
+                                    <tbody>
+                                        <tr>
+                                            <th>Líneas incluidas</th>
+                                            <td t-esc="len(doc.line_ids)"/>
+                                            <th>Líneas con captura</th>
+                                            <td t-esc="doc.active_line_count"/>
+                                        </tr>
+                                        <tr>
+                                            <th>Total rollos solicitados</th>
+                                            <td t-esc="int(doc.total_rolls_requested)"/>
+                                            <th>Total rollos en curso</th>
+                                            <td t-esc="int(doc.total_current_rolls)"/>
+                                        </tr>
+                                        <tr>
+                                            <th>Total rollos faltantes</th>
+                                            <td t-esc="int(doc.total_rolls_missing)"/>
+                                            <th>Elaboró</th>
+                                            <td t-esc="doc.created_by_id.name"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="debytex_section">
+                                <h3>Detalle por línea</h3>
+                                <t t-foreach="doc.line_ids" t-as="line">
+                                    <div class="debytex_card">
+                                        <h4>
+                                            <span t-esc="line.workcenter_id.name"/>
+                                            <span t-attf-class="debytex_pill #{'debytex_pill_done' if line.rolls_requested &gt; 0 and line.rolls_missing &lt;= 0 else ('debytex_pill_progress' if line.production_id else 'debytex_pill_empty')}"
+                                                  t-esc="'Terminada' if line.rolls_requested &gt; 0 and line.rolls_missing &lt;= 0 else ('En proceso' if line.production_id else 'Sin captura')"/>
+                                        </h4>
+                                        <table class="debytex_table">
+                                            <tbody>
+                                                <tr><th>Turno</th><td t-esc="line.shift_label"/></tr>
+                                                <tr><th>Cliente</th><td t-esc="line.client_name or '—'"/></tr>
+                                                <tr><th>Producto</th><td t-esc="line.product_name or '—'"/></tr>
+                                                <tr><th>Orden / lote</th><td><span t-esc="line.production_name or '—'"/> / <span t-esc="line.lot_name or '—'"/></td></tr>
+                                                <tr><th>Gramaje / ancho</th><td><span t-esc="line.target_grammage or '—'"/> g/m² · <span t-esc="line.target_width or '—'"/> cm</td></tr>
+                                                <tr><th>Color / código</th><td><span t-esc="line.color or '—'"/> / <span t-esc="line.color_code or '—'"/></td></tr>
+                                                <tr><th>Solicitados / actual</th><td><span t-esc="int(line.rolls_requested)"/> / <span t-esc="int(line.current_roll)"/></td></tr>
+                                                <tr><th>Faltantes</th><td t-esc="int(line.rolls_missing)"/></tr>
+                                                <tr><th>Tiempo restante</th><td t-esc="line.remaining_time_text or '—'"/></tr>
+                                                <tr><th>Finalización</th><td><span t-field="line.estimated_finish" t-options="{'widget': 'datetime'}"/></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+
+                        <t t-if="doc.report_type in ('technical', 'both')">
+                            <t t-foreach="doc.line_ids" t-as="line">
+                                <div t-attf-class="#{'debytex_page_break' if doc.report_type == 'both' or line_index &gt; 0 else ''}">
+                                    <div class="debytex_report_header">
+                                        <h2>Reporte de <span t-esc="line.workcenter_id.name"/></h2>
+                                        <div class="debytex_meta">
+                                            <strong>Estado:</strong> <span t-esc="line.report_status"/> ·
+                                            <strong>Hora de corte:</strong>
+                                            <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_general_data">
+                                        <h3>1. Identificación y datos generales</h3>
+                                        <table class="debytex_table">
+                                            <tbody>
+                                                <tr><th>Orden / lote</th><td><span t-esc="line.production_name or '—'"/> / <span t-esc="line.lot_name or '—'"/></td><th>Cliente</th><td t-esc="line.client_name or '—'"/></tr>
+                                                <tr><th>Producto</th><td colspan="3" t-esc="line.product_name or '—'"/></tr>
+                                                <tr><th>Especificación</th><td><span t-esc="line.target_grammage or '—'"/> g/m² · <span t-esc="line.target_width or '—'"/> cm · <span t-esc="line.roll_length or '—'"/> m</td><th>Color / código</th><td><span t-esc="line.color or '—'"/> / <span t-esc="line.color_code or '—'"/></td></tr>
+                                                <tr><th>Turno</th><td t-esc="line.shift_label"/><th>Líder / supervisor</th><td><span t-esc="line.leader_id.name or '—'"/> / <span t-esc="line.supervisor_id.name or '—'"/></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_parameters">
+                                        <h3>2. Parámetros de operación registrados</h3>
+                                        <table class="debytex_table"><tbody>
+                                            <tr><th>Gramaje objetivo</th><td><span t-esc="line.target_grammage or '—'"/> g/m²</td><th>RPM bomba</th><td t-esc="line.pump_rpm or '—'"/></tr>
+                                            <tr><th>Suction</th><td t-esc="line.suction or '—'"/><th>Cooling</th><td t-esc="line.cooling or '—'"/></tr>
+                                            <tr><th>Range Hood</th><td t-esc="line.range_hood or '—'"/><th>Velocidad de banda</th><td><span t-esc="line.belt_speed or '—'"/> m/min</td></tr>
+                                            <tr><th>Velocidad Winder</th><td><span t-esc="line.winder_speed or '—'"/> m/min</td><th>Constante K</th><td t-esc="line.k_constant or '—'"/></tr>
+                                            <tr><th>Spinning Box</th><td t-esc="line.spinning_box or '—'"/><th>Temperaturas</th><td t-esc="line.temperatures or '—'"/></tr>
+                                            <tr><th>Calandras superior / inferior</th><td><span t-esc="line.upper_calender or '—'"/> / <span t-esc="line.lower_calender or '—'"/> °C</td><th>Presión</th><td t-esc="line.calender_pressure or '—'"/></tr>
+                                            <tr t-if="doc.include_additive"><th>Aditivo / código</th><td><span t-esc="line.additive or '—'"/> / <span t-esc="line.additive_code or '—'"/></td><th>Porcentaje</th><td><span t-esc="line.additive_percentage or '—'"/>%</td></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_production">
+                                        <h3>3. Resultado de producción al corte</h3>
+                                        <table class="debytex_table"><tbody>
+                                            <tr><th>Gramaje real</th><td><span t-esc="line.actual_grammage or '—'"/> g/m²</td><th>Ancho real</th><td><span t-esc="line.actual_width or '—'"/> cm</td></tr>
+                                            <tr><th>Longitud del rollo</th><td><span t-esc="line.roll_length or '—'"/> m</td><th>Rollos solicitados</th><td t-esc="int(line.rolls_requested)"/></tr>
+                                            <tr><th>Rollo actual / en curso</th><td t-esc="int(line.current_roll)"/><th>Rollos faltantes</th><td t-esc="int(line.rolls_missing)"/></tr>
+                                            <tr><th>Rollos por eje</th><td t-esc="line.rolls_per_axis"/><th>Ejes pendientes</th><td t-esc="line.pending_axes"/></tr>
+                                            <tr><th>Minutos por eje</th><td t-esc="round(line.minutes_per_axis, 4)"/><th>Tiempo restante</th><td t-esc="line.remaining_time_text"/></tr>
+                                            <tr><th>Horas decimales</th><td t-esc="round(line.remaining_hours, 6)"/><th>Finalización estimada</th><td><span t-field="line.estimated_finish" t-options="{'widget': 'datetime'}"/></td></tr>
+                                        </tbody></table>
+                                        <div class="debytex_note">La finalización estimada supone continuidad de producción desde el corte y no descuenta paros futuros.</div>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_quality">
+                                        <h3>4. Calidad</h3>
+                                        <table class="debytex_table"><tbody>
+                                            <tr><th>Gramaje real</th><td t-esc="line.quality_grammage or '—'"/><th>Resistencia MD / CD</th><td><span t-esc="line.resistance_md or '—'"/> / <span t-esc="line.resistance_cd or '—'"/></td></tr>
+                                            <tr><th>Elongación MD / CD</th><td><span t-esc="line.elongation_md or '—'"/> / <span t-esc="line.elongation_cd or '—'"/></td><th>Observaciones</th><td t-esc="line.quality_observations or 'Sin observaciones.'"/></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_waste">
+                                        <h3>5. Mermas</h3>
+                                        <table class="debytex_table"><thead><tr><th>Tipo</th><th>Cantidad</th><th>Causa</th></tr></thead><tbody>
+                                            <tr t-foreach="line.waste_ids" t-as="waste"><td t-esc="waste.waste_type"/><td t-esc="waste.quantity or '—'"/><td t-esc="waste.cause or '—'"/></tr>
+                                            <tr t-if="not line.waste_ids"><td colspan="3">No se registraron datos.</td></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_incidents">
+                                        <h3>6. Incidencias</h3>
+                                        <table class="debytex_table"><thead><tr><th>Hora</th><th>Descripción</th><th>Acción tomada</th><th>Resultado</th></tr></thead><tbody>
+                                            <tr t-foreach="line.incident_ids" t-as="incident"><td t-esc="incident.time_text or '—'"/><td t-esc="incident.description"/><td t-esc="incident.action_taken or '—'"/><td t-esc="incident.result or '—'"/></tr>
+                                            <tr t-if="not line.incident_ids"><td colspan="4">No se registraron datos.</td></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_adjustments">
+                                        <h3>7. Ajustes realizados</h3>
+                                        <table class="debytex_table"><thead><tr><th>Hora</th><th>Ajuste</th><th>Motivo</th></tr></thead><tbody>
+                                            <tr t-foreach="line.adjustment_ids" t-as="adjustment"><td t-esc="adjustment.time_text or '—'"/><td t-esc="adjustment.adjustment"/><td t-esc="adjustment.reason or '—'"/></tr>
+                                            <tr t-if="not line.adjustment_ids"><td colspan="3">No se registraron datos.</td></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_stops">
+                                        <h3>8. Paros de línea</h3>
+                                        <table class="debytex_table"><thead><tr><th>Inicio</th><th>Fin</th><th>Duración</th><th>Motivo</th></tr></thead><tbody>
+                                            <tr t-foreach="line.stop_ids" t-as="stop"><td><span t-field="stop.start_datetime" t-options="{'widget': 'datetime'}"/></td><td><span t-field="stop.end_datetime" t-options="{'widget': 'datetime'}"/></td><td><span t-esc="round(stop.duration_minutes, 2)"/> min</td><td t-esc="stop.reason or '—'"/></tr>
+                                            <tr t-if="not line.stop_ids"><td colspan="4">No se registraron datos.</td></tr>
+                                        </tbody></table>
+                                    </div>
+
+                                    <div class="debytex_section" t-if="doc.include_handover">
+                                        <h3>9. Observaciones y entrega de turno</h3>
+                                        <div class="debytex_note"><strong>Condiciones de la línea:</strong><br/><span t-esc="line.line_conditions or 'Sin datos.'"/></div>
+                                        <div class="debytex_note"><strong>Pendientes:</strong><br/><span t-esc="line.pending_notes or 'Sin pendientes.'"/></div>
+                                        <div class="debytex_note"><strong>Recomendaciones:</strong><br/><span t-esc="line.recommendations or 'Sin recomendaciones.'"/></div>
+                                    </div>
+
+                                    <div t-if="doc.include_signatures">
+                                        <div class="debytex_signature">Elaboró / Líder de turno</div>
+                                        <div class="debytex_signature">Validó / Supervisor</div>
+                                        <div class="debytex_signature">Recibió siguiente turno</div>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
