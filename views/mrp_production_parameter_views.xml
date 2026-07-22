@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_production_form_line_report_parameters" model="ir.ui.view">
+        <field name="name">mrp.production.form.line.report.parameters</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="custom_novici.view_mrp_production_form_register_rollos"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Parámetros de operación" name="line_report_parameters">
+                    <div class="alert alert-info" role="alert">
+                        Estos datos se solicitan al iniciar el turno, pueden actualizarse aquí y se utilizan en el tablero y en el reporte PDF.
+                    </div>
+                    <field name="line_report_parameters_registered" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="line_report_target_grammage"/>
+                            <field name="line_report_suction"/>
+                            <field name="line_report_range_hood"/>
+                            <field name="line_report_winder_speed"/>
+                            <field name="line_report_spinning_box"/>
+                            <label for="line_report_upper_calender" string="Calandras superior / inferior"/>
+                            <div class="o_row">
+                                <field name="line_report_upper_calender" nolabel="1" placeholder="Superior"/>
+                                <span class="mx-2">/</span>
+                                <field name="line_report_lower_calender" nolabel="1" placeholder="Inferior"/>
+                            </div>
+                            <label for="line_report_additive" string="Aditivo / código"/>
+                            <div class="o_row">
+                                <field name="line_report_additive" nolabel="1" placeholder="Aditivo"/>
+                                <span class="mx-2">/</span>
+                                <field name="line_report_additive_code" nolabel="1" placeholder="Código"/>
+                            </div>
+                        </group>
+                        <group>
+                            <field name="line_report_pump_rpm"/>
+                            <field name="line_report_cooling"/>
+                            <field name="line_report_belt_speed"/>
+                            <field name="line_report_k_constant" readonly="1"/>
+                            <field name="line_report_temperatures"/>
+                            <field name="line_report_calender_pressure"/>
+                            <field name="line_report_additive_percentage"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

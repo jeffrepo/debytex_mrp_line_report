@@ -18,7 +18,8 @@
                     </span>
                     <span t-attf-class="debytex-card-source source-#{summary.source_type}"
                           t-att-title="summary.source_label">
-                        <t t-if="summary.source_type == 'snapshot'">Con parámetros</t>
+                        <t t-if="summary.source_type == 'snapshot'">Con captura</t>
+                        <t t-elif="summary.source_type == 'production'">Parámetros OP</t>
                         <t t-else="">En vivo</t>
                     </span>
                 </div>
@@ -94,9 +95,19 @@
                                 <t t-esc="displayLineReportValue(r.cutoff_datetime)"/>
                             </p>
                         </div>
-                        <span t-attf-class="debytex-source-badge source-#{r.source_type}">
-                            <t t-esc="r.source_label"/>
-                        </span>
+                        <div class="debytex-report-title-actions">
+                            <span t-attf-class="debytex-source-badge source-#{r.source_type}">
+                                <t t-esc="r.source_label"/>
+                            </span>
+                            <button type="button"
+                                    class="btn btn-primary debytex-print-report-button"
+                                    t-on-click.stop="printLineReport"
+                                    t-att-disabled="state.lineReportPrinting">
+                                <i t-attf-class="fa #{state.lineReportPrinting ? 'fa-spinner fa-spin' : 'fa-file-pdf-o'} me-1"/>
+                                <t t-if="state.lineReportPrinting">Generando PDF…</t>
+                                <t t-else="">Imprimir PDF</t>
+                            </button>
+                        </div>
                     </div>
 
                     <section class="debytex-report-section">
