@@ -1,3 +1,5 @@
+import math
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -6,6 +8,194 @@ from ..services.calculations import compute_production
 
 class MrpProduction(models.Model):
     _inherit = "mrp.production"
+
+    @api.model
+    def get_dashboard_data(self):
+        """Add the report-style summary to each order from custom_novici."""
+        dashboard_data = super().get_dashboard_data()
+        production_ids = [
+            order["id"]
+            for workcenter in dashboard_data.values()
+            for order in workcenter.get("ordenes", [])
+            if order.get("id")
+        ]
+        summaries = self._get_line_report_dashboard_summaries(production_ids)
+        for workcenter in dashboard_data.values():
+            for order in workcenter.get("ordenes", []):
+                order["line_report_summary"] = summaries.get(
+                    order.get("id"), self._empty_dashboard_summary(order)
+                )
+        return dashboard_data
+
+    @api.model
+    def _get_line_report_dashboard_summaries(self, production_ids):
+        if not production_ids:
+            return {}
+
+        productions = self.sudo().browse(production_ids).exists().filtered(
+            lambda production: (
+                not production.company_id
+                or production.company_id.id in self.env.companies.ids
+            )
+        )
+        report_lines = self.env["debytex.mrp.line.report.line"].sudo().search(
+            [
+                ("production_id", "in", productions.ids),
+                ("report_id.company_id", "in", self.env.companies.ids),
+            ]
+        )
+        oldest_datetime = fields.Datetime.to_datetime("1970-01-01 00:00:00")
+        latest_line_by_production = {}
+        for line in report_lines.sorted(
+            key=lambda report_line: (
+                report_line.report_id.cutoff_datetime or oldest_datetime,
+                report_line.report_id.id,
+                report_line.id,
+            ),
+            reverse=True,
+        ):
+            latest_line_by_production.setdefault(line.production_id.id, line)
+
+        cutoff_datetime = fields.Datetime.now()
+        helper_wizard = self.env["debytex.mrp.line.report.wizard"].sudo().new(
+            {"cutoff_datetime": cutoff_datetime}
+        )
+        return {
+            production.id: self._build_dashboard_order_summary(
+                production,
+                latest_line_by_production.get(production.id),
+                cutoff_datetime,
+                helper_wizard,
+            )
+            for production in productions
+        }
+
+    @api.model
+    def _build_dashboard_order_summary(
+        self, production, snapshot_line, cutoff_datetime, helper_wizard
+    ):
+        product = production.product_id
+        attributes = helper_wizard._product_attributes(product)
+        target_grammage = helper_wizard._to_number(
+            getattr(product.product_tmpl_id, "gramaje", False)
+            or attributes.get("gramaje")
+            or attributes.get("peso")
+        )
+        target_width = helper_wizard._to_number(
+            getattr(product.product_tmpl_id, "ancho", False)
+            or attributes.get("ancho")
+        )
+        roll_length = helper_wizard._to_number(
+            attributes.get("metros x rollo") or attributes.get("metrosxrollo")
+        )
+        color = (
+            getattr(product.product_tmpl_id, "color", False)
+            or attributes.get("color")
+            or ""
+        )
+        active_rolls = production.rollo_ids.filtered("active")
+        current_roll = max(active_rolls.mapped("numero_rollo"), default=0)
+        useful_width = getattr(
+            production.workcenter_id, "x_ancho_util", 0.0
+        ) or getattr(production.workcenter_id, "eje_cm", 0.0)
+        rolls_per_axis = (
+            math.floor(useful_width / target_width)
+            if useful_width > 0 and target_width > 0
+            else 0
+        )
+        winder_speed = 0.0
+        belt_speed = 0.0
+        manual_minutes = 0.0
+        time_mode = "manual"
+        source_type = "live"
+        source_label = _("Datos actuales")
+
+        if snapshot_line:
+            target_grammage = snapshot_line.target_grammage or target_grammage
+            target_width = snapshot_line.target_width or target_width
+            roll_length = snapshot_line.roll_length or roll_length
+            color = snapshot_line.color or color
+            rolls_per_axis = snapshot_line.rolls_per_axis or rolls_per_axis
+            winder_speed = snapshot_line.winder_speed
+            belt_speed = snapshot_line.belt_speed
+            manual_minutes = snapshot_line.manual_minutes_per_roll
+            time_mode = snapshot_line.time_mode
+            source_type = "snapshot"
+            source_label = _("Parámetros de %s") % snapshot_line.report_id.name
+
+        computed = compute_production(
+            rolls_requested=production.product_qty,
+            current_roll=current_roll,
+            rolls_per_axis=rolls_per_axis,
+            roll_length=roll_length,
+            winder_speed=winder_speed,
+            belt_speed=belt_speed,
+            manual_minutes=manual_minutes,
+            time_mode=time_mode,
+            cutoff_datetime=cutoff_datetime,
+        )
+        sale_order = production.sale_order_id
+        shift = self._dashboard_shift_label(cutoff_datetime)
+        if snapshot_line and snapshot_line.shift_label:
+            shift = snapshot_line.shift_label
+
+        return {
+            "source_type": source_type,
+            "source_label": source_label,
+            "shift_label": shift,
+            "client_name": sale_order.partner_id.name if sale_order else "",
+            "product_name": product.display_name or "",
+            "production_name": production.name or "",
+            "lot_name": production.lot_producing_id.name or "",
+            "target_grammage": target_grammage,
+            "target_width": target_width,
+            "color": color,
+            "color_code": (
+                snapshot_line.color_code
+                if snapshot_line and snapshot_line.color_code
+                else helper_wizard._color_code(color)
+            ),
+            "rolls_requested": production.product_qty,
+            "current_roll": current_roll,
+            "rolls_missing": computed["rolls_missing"],
+            "remaining_time_text": computed["remaining_time_text"],
+            "estimated_finish": self._format_dashboard_datetime(
+                computed["estimated_finish"]
+            ),
+        }
+
+    @api.model
+    def _dashboard_shift_label(self, cutoff_datetime):
+        local_cutoff = fields.Datetime.context_timestamp(self, cutoff_datetime)
+        if 6 <= local_cutoff.hour <= 13:
+            return _("Matutino")
+        if 14 <= local_cutoff.hour <= 21:
+            return _("Vespertino")
+        return _("Nocturno")
+
+    @api.model
+    def _empty_dashboard_summary(self, order):
+        return {
+            "source_type": "live",
+            "source_label": _("Datos actuales"),
+            "shift_label": "",
+            "client_name": order.get("cliente", ""),
+            "product_name": order.get("product_name", ""),
+            "production_name": order.get("name", ""),
+            "lot_name": "",
+            "target_grammage": 0,
+            "target_width": 0,
+            "color": "",
+            "color_code": "",
+            "rolls_requested": order.get("qty_planificada", 0),
+            "current_roll": order.get("qty_producida", 0),
+            "rolls_missing": max(
+                order.get("qty_planificada", 0) - order.get("qty_producida", 0),
+                0,
+            ),
+            "remaining_time_text": "",
+            "estimated_finish": "",
+        }
 
     @api.model
     def get_line_report_dashboard_detail(self, production_id):

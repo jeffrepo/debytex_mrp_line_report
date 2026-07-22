@@ -1,3 +1,66 @@
+.debytex-order-summary-card {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.76);
+}
+
+.debytex-summary-card-header {
+    margin-bottom: 8px;
+}
+
+.debytex-card-source {
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.debytex-card-source.source-snapshot {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.debytex-card-source.source-live {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+.debytex-dashboard-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    background: rgba(255, 255, 255, 0.58);
+    font-size: 10px;
+}
+
+.debytex-dashboard-summary-table th,
+.debytex-dashboard-summary-table td {
+    border: 1px solid #cbd5e1;
+    padding: 4px 5px;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.debytex-dashboard-summary-table th {
+    width: 35%;
+    background: #eef4fb;
+    color: #173b5c;
+    font-weight: 700;
+}
+
+.debytex-dashboard-summary-table td {
+    color: #1f2937;
+}
+
+.debytex-summary-product {
+    line-height: 1.25;
+}
+
+.debytex-summary-card-hint {
+    margin-top: 7px;
+}
+
 .debytex-line-report-modal {
     width: 96%;
     max-width: 1100px;
