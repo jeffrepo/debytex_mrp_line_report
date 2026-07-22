@@ -3,6 +3,51 @@
     <t t-name="debytex_mrp_line_report.MrpDashboardReport"
        t-inherit="custom_novici.MrpDashboard"
        t-inherit-mode="extension">
+        <xpath expr="//div[contains(@t-attf-class, 'order-card')]" position="replace">
+            <div t-attf-class="order-card debytex-order-summary-card priority-#{mo.dashboard_priority}"
+                 t-on-click="() => this.openDetail(mo)">
+                <t t-set="summary" t-value="mo.line_report_summary"/>
+
+                <div class="card-top-row debytex-summary-card-header">
+                    <span t-attf-class="card-state state-#{mo.state_label}">
+                        <t t-if="mo.state_label == 'Produciendo'">⚙️</t>
+                        <t t-elif="mo.state_label == 'Producido'">✅</t>
+                        <t t-elif="mo.state_label == 'Confirmado'">📦</t>
+                        <t t-else="">⏳</t>
+                        <t t-esc="mo.state_label"/>
+                    </span>
+                    <span t-attf-class="debytex-card-source source-#{summary.source_type}"
+                          t-att-title="summary.source_label">
+                        <t t-if="summary.source_type == 'snapshot'">Con parámetros</t>
+                        <t t-else="">En vivo</t>
+                    </span>
+                </div>
+
+                <table class="debytex-dashboard-summary-table">
+                    <tbody>
+                        <tr><th>Turno</th><td><t t-esc="displayLineReportValue(summary.shift_label)"/></td></tr>
+                        <tr><th>Cliente</th><td><t t-esc="displayLineReportValue(summary.client_name)"/></td></tr>
+                        <tr><th>Producto</th><td class="debytex-summary-product"><t t-esc="displayLineReportValue(summary.product_name)"/></td></tr>
+                        <tr><th>Orden / lote</th><td><t t-esc="displayLineReportValue(summary.production_name)"/> / <t t-esc="displayLineReportValue(summary.lot_name)"/></td></tr>
+                        <tr>
+                            <th>Gramaje / ancho</th>
+                            <td>
+                                <t t-esc="displayOptionalLineReportValue(summary.target_grammage, ' g/m²')"/> ·
+                                <t t-esc="displayOptionalLineReportValue(summary.target_width, ' cm')"/>
+                            </td>
+                        </tr>
+                        <tr><th>Color / código</th><td><t t-esc="displayLineReportValue(summary.color)"/> / <t t-esc="displayLineReportValue(summary.color_code)"/></td></tr>
+                        <tr><th>Solicitados / actual</th><td><t t-esc="displayLineReportValue(summary.rolls_requested)"/> / <t t-esc="displayLineReportValue(summary.current_roll)"/></td></tr>
+                        <tr><th>Faltantes</th><td><t t-esc="displayLineReportValue(summary.rolls_missing)"/></td></tr>
+                        <tr><th>Tiempo restante</th><td><t t-esc="displayLineReportValue(summary.remaining_time_text)"/></td></tr>
+                        <tr><th>Finalización</th><td><t t-esc="displayLineReportValue(summary.estimated_finish)"/></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="card-hint debytex-summary-card-hint">👆 Ver detalle completo</div>
+            </div>
+        </xpath>
+
         <xpath expr="//div[contains(@class, 'dash-modal-detail')]" position="replace">
             <div class="dash-modal dash-modal-detail debytex-line-report-modal"
                  t-on-click.stop=""

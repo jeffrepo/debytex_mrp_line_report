@@ -18,6 +18,9 @@ las líneas de producción de Debytex/ECOWOOL.
   muestra los apartados técnicos completos de la última captura asociada.
   Cuando todavía no existe una captura, presenta los datos actuales
   disponibles e identifica claramente el detalle como información en vivo.
+- Cada tarjeta del tablero conserva la agrupación por línea y muestra el
+  resumen operativo del reporte para su orden: turno, cliente, producto,
+  orden/lote, especificación, color, rollos y tiempo restante.
 
 ## Regla de cálculo
 
