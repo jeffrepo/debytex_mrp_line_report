@@ -25,6 +25,11 @@
     color: #4b5563;
 }
 
+.debytex-card-source.source-production {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
 .debytex-dashboard-summary-table {
     width: 100%;
     border-collapse: collapse;
@@ -128,6 +133,18 @@
     border-bottom: 3px solid #1f4e79;
 }
 
+.debytex-report-title-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 9px;
+}
+
+.debytex-print-report-button {
+    white-space: nowrap;
+    font-weight: 700;
+}
+
 .debytex-report-title-block h2 {
     margin: 0 0 4px;
     color: #1f4e79;
@@ -161,6 +178,11 @@
 .debytex-source-badge.source-live {
     background: #fef3c7;
     color: #92400e;
+}
+
+.debytex-source-badge.source-production {
+    background: #dbeafe;
+    color: #1e40af;
 }
 
 .debytex-report-section {

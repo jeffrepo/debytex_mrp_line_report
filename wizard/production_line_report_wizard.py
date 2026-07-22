@@ -31,7 +31,7 @@ class DebytexMrpLineReportWizard(models.TransientModel):
 
     include_general_data = fields.Boolean(string="Datos generales", default=True)
     include_parameters = fields.Boolean(string="Parámetros", default=True)
-    include_additive = fields.Boolean(string="Aditivo", default=False)
+    include_additive = fields.Boolean(string="Aditivo", default=True)
     include_production = fields.Boolean(string="Producción", default=True)
     include_quality = fields.Boolean(string="Calidad", default=False)
     include_waste = fields.Boolean(string="Mermas", default=False)
@@ -152,6 +152,8 @@ class DebytexMrpLineReportWizard(models.TransientModel):
             or attributes.get("gramaje")
             or attributes.get("peso")
         )
+        if production.line_report_parameters_registered:
+            target_grammage = production.line_report_target_grammage
         target_width = self._to_number(
             getattr(product.product_tmpl_id, "ancho", False)
             or attributes.get("ancho")
@@ -204,6 +206,8 @@ class DebytexMrpLineReportWizard(models.TransientModel):
                 "stop_ids": self._prepare_stop_commands(production, workorder),
             }
         )
+        if production.line_report_parameters_registered:
+            values.update(production._line_report_operation_values())
         return values
 
     def _prepare_stop_commands(self, production, workorder):

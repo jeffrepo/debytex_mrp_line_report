@@ -21,6 +21,12 @@ las líneas de producción de Debytex/ECOWOOL.
 - Cada tarjeta del tablero conserva la agrupación por línea y muestra el
   resumen operativo del reporte para su orden: turno, cliente, producto,
   orden/lote, especificación, color, rollos y tiempo restante.
+- El detalle de cada orden en el tablero permite imprimir un PDF individual
+  con los mismos apartados mostrados en pantalla.
+- El wizard **Iniciar Turno** registra los parámetros de operación del punto
+  2 directamente en la orden de fabricación. Los valores permanecen
+  editables en la pestaña **Parámetros de operación** y alimentan el tablero,
+  los cálculos y las nuevas capturas PDF.
 
 ## Regla de cálculo
 

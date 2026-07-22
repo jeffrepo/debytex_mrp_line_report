@@ -123,6 +123,14 @@ class MrpProduction(models.Model):
             source_type = "snapshot"
             source_label = _("Parámetros de %s") % snapshot_line.report_id.name
 
+        if production.line_report_parameters_registered:
+            operation_values = production._line_report_operation_values()
+            target_grammage = operation_values["target_grammage"]
+            winder_speed = operation_values["winder_speed"]
+            belt_speed = operation_values["belt_speed"]
+            source_type = "production"
+            source_label = _("Parámetros registrados en la orden")
+
         computed = compute_production(
             rolls_requested=production.product_qty,
             current_roll=current_roll,
@@ -232,12 +240,221 @@ class MrpProduction(models.Model):
         return self._build_live_dashboard_report(production)
 
     @api.model
+    def action_print_line_report_from_dashboard(
+        self, production_id, report_line_id=False
+    ):
+        """Create and print a one-order snapshot from the dashboard detail."""
+        try:
+            production_id = int(production_id)
+        except (TypeError, ValueError):
+            raise UserError(_("La orden de fabricación indicada no es válida."))
+
+        production = self.browse(production_id).exists()
+        if not production:
+            raise UserError(_("La orden de fabricación ya no existe."))
+        if (
+            production.company_id
+            and production.company_id.id not in self.env.companies.ids
+        ):
+            raise UserError(_("La orden pertenece a una compañía no habilitada."))
+        if not production.workcenter_id:
+            raise UserError(
+                _("La orden no tiene un centro de trabajo asignado.")
+            )
+
+        source_line = self.env["debytex.mrp.line.report.line"]
+        if report_line_id:
+            try:
+                report_line_id = int(report_line_id)
+            except (TypeError, ValueError):
+                raise UserError(_("La captura seleccionada no es válida."))
+            source_line = source_line.browse(report_line_id).exists()
+            if (
+                not source_line
+                or source_line.production_id != production
+                or source_line.report_id.company_id != production.company_id
+            ):
+                raise UserError(
+                    _("La captura no corresponde a la orden seleccionada.")
+                )
+
+        if source_line:
+            cutoff_datetime = source_line.report_id.cutoff_datetime
+            line_values = self._copy_dashboard_report_line_values(
+                source_line, production
+            )
+        else:
+            cutoff_datetime = fields.Datetime.now()
+            helper_wizard = self.env[
+                "debytex.mrp.line.report.wizard"
+            ].new({"cutoff_datetime": cutoff_datetime})
+            helper_line = self.env[
+                "debytex.mrp.line.report.wizard.line"
+            ].new(
+                {
+                    "workcenter_id": production.workcenter_id.id,
+                    "production_id": production.id,
+                }
+            )
+            line_values = helper_wizard._prepare_report_line(helper_line)
+
+        report = self.env["debytex.mrp.line.report"].create(
+            {
+                "report_type": "technical",
+                "cutoff_datetime": cutoff_datetime,
+                "company_id": production.company_id.id,
+                "include_general_data": True,
+                "include_parameters": True,
+                "include_additive": True,
+                "include_production": True,
+                "include_quality": True,
+                "include_waste": True,
+                "include_incidents": True,
+                "include_adjustments": True,
+                "include_stops": True,
+                "include_handover": True,
+                "include_signatures": True,
+                "line_ids": [(0, 0, line_values)],
+            }
+        )
+        return report.action_print_report()
+
+    @api.model
+    def _copy_dashboard_report_line_values(self, source_line, production):
+        many2one_fields = (
+            "workcenter_id",
+            "production_id",
+            "workorder_id",
+            "turn_closure_id",
+            "leader_id",
+            "supervisor_id",
+        )
+        simple_fields = (
+            "sequence",
+            "shift",
+            "production_name",
+            "sale_order_name",
+            "lot_name",
+            "product_name",
+            "client_name",
+            "target_grammage",
+            "target_width",
+            "pump_rpm",
+            "suction",
+            "cooling",
+            "range_hood",
+            "belt_speed",
+            "winder_speed",
+            "spinning_box",
+            "upper_calender",
+            "lower_calender",
+            "calender_pressure",
+            "temperatures",
+            "color",
+            "color_code",
+            "color_percentage",
+            "additive",
+            "additive_code",
+            "additive_percentage",
+            "actual_grammage",
+            "actual_width",
+            "roll_length",
+            "rolls_requested",
+            "current_roll",
+            "rolls_per_axis",
+            "time_mode",
+            "manual_minutes_per_roll",
+            "quality_grammage",
+            "resistance_md",
+            "resistance_cd",
+            "elongation_md",
+            "elongation_cd",
+            "quality_observations",
+            "line_conditions",
+            "pending_notes",
+            "recommendations",
+        )
+        values = {
+            field_name: getattr(source_line, field_name).id
+            for field_name in many2one_fields
+        }
+        values.update(
+            {
+                field_name: getattr(source_line, field_name)
+                for field_name in simple_fields
+            }
+        )
+        values.update(
+            {
+                "waste_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "sequence": waste.sequence,
+                            "waste_type": waste.waste_type,
+                            "quantity": waste.quantity,
+                            "cause": waste.cause,
+                        },
+                    )
+                    for waste in source_line.waste_ids
+                ],
+                "incident_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "sequence": incident.sequence,
+                            "time_text": incident.time_text,
+                            "description": incident.description,
+                            "action_taken": incident.action_taken,
+                            "result": incident.result,
+                        },
+                    )
+                    for incident in source_line.incident_ids
+                ],
+                "adjustment_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "sequence": adjustment.sequence,
+                            "time_text": adjustment.time_text,
+                            "adjustment": adjustment.adjustment,
+                            "reason": adjustment.reason,
+                        },
+                    )
+                    for adjustment in source_line.adjustment_ids
+                ],
+                "stop_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "source_productivity_id": (
+                                stop.source_productivity_id.id
+                            ),
+                            "start_datetime": stop.start_datetime,
+                            "end_datetime": stop.end_datetime,
+                            "reason": stop.reason,
+                        },
+                    )
+                    for stop in source_line.stop_ids
+                ],
+            }
+        )
+        if production.line_report_parameters_registered:
+            values.update(production._line_report_operation_values())
+        return values
+
+    @api.model
     def _serialize_dashboard_report_line(self, line):
         report = line.report_id
-        return {
+        values = {
             "source_type": "snapshot",
             "source_label": _("Captura guardada: %s") % report.name,
             "report_id": report.id,
+            "report_line_id": line.id,
             "cutoff_datetime": self._format_dashboard_datetime(
                 report.cutoff_datetime
             ),
@@ -331,6 +548,38 @@ class MrpProduction(models.Model):
             "pending_notes": line.pending_notes or "",
             "recommendations": line.recommendations or "",
         }
+        production = line.production_id
+        if production.line_report_parameters_registered:
+            values.update(production._line_report_operation_values())
+            computed = compute_production(
+                rolls_requested=line.rolls_requested,
+                current_roll=line.current_roll,
+                rolls_per_axis=line.rolls_per_axis,
+                roll_length=line.roll_length,
+                winder_speed=production.line_report_winder_speed,
+                belt_speed=production.line_report_belt_speed,
+                manual_minutes=line.manual_minutes_per_roll,
+                time_mode=line.time_mode,
+                cutoff_datetime=report.cutoff_datetime,
+            )
+            values.update(
+                {
+                    "source_label": _(
+                        "Captura guardada: %s · parámetros actuales de la orden"
+                    )
+                    % report.name,
+                    "k_constant": production.line_report_k_constant,
+                    "rolls_missing": computed["rolls_missing"],
+                    "pending_axes": computed["pending_axes"],
+                    "minutes_per_axis": computed["minutes_per_axis"],
+                    "remaining_hours": computed["remaining_hours"],
+                    "remaining_time_text": computed["remaining_time_text"],
+                    "estimated_finish": self._format_dashboard_datetime(
+                        computed["estimated_finish"]
+                    ),
+                }
+            )
+        return values
 
     @api.model
     def _build_live_dashboard_report(self, production):
@@ -373,8 +622,13 @@ class MrpProduction(models.Model):
 
         return {
             "source_type": "live",
-            "source_label": _("Datos actuales; todavía no existe una captura"),
+            "source_label": (
+                _("Datos actuales y parámetros registrados en la orden")
+                if production.line_report_parameters_registered
+                else _("Datos actuales; todavía no existe una captura")
+            ),
             "report_id": False,
+            "report_line_id": False,
             "cutoff_datetime": self._format_dashboard_datetime(cutoff_datetime),
             "workcenter_name": production.workcenter_id.name or "",
             "production_name": values.get("production_name", production.name) or "",
@@ -388,24 +642,24 @@ class MrpProduction(models.Model):
             "supervisor_name": "",
             "target_grammage": values.get("target_grammage", 0),
             "target_width": values.get("target_width", 0),
-            "pump_rpm": 0,
-            "suction": "",
-            "cooling": "",
-            "range_hood": "",
-            "belt_speed": 0,
-            "winder_speed": 0,
-            "spinning_box": 0,
-            "upper_calender": 0,
-            "lower_calender": 0,
-            "calender_pressure": "",
-            "temperatures": "",
+            "pump_rpm": values.get("pump_rpm", 0),
+            "suction": values.get("suction", "") or "",
+            "cooling": values.get("cooling", "") or "",
+            "range_hood": values.get("range_hood", "") or "",
+            "belt_speed": values.get("belt_speed", 0),
+            "winder_speed": values.get("winder_speed", 0),
+            "spinning_box": values.get("spinning_box", 0),
+            "upper_calender": values.get("upper_calender", 0),
+            "lower_calender": values.get("lower_calender", 0),
+            "calender_pressure": values.get("calender_pressure", "") or "",
+            "temperatures": values.get("temperatures", "") or "",
             "k_constant": computed["k_constant"],
             "color": values.get("color", "") or "",
             "color_code": values.get("color_code", "") or "",
             "color_percentage": 0,
-            "additive": "",
-            "additive_code": "",
-            "additive_percentage": 0,
+            "additive": values.get("additive", "") or "",
+            "additive_code": values.get("additive_code", "") or "",
+            "additive_percentage": values.get("additive_percentage", 0),
             "actual_grammage": values.get("actual_grammage", 0),
             "actual_width": values.get("actual_width", 0),
             "roll_length": values.get("roll_length", 0),

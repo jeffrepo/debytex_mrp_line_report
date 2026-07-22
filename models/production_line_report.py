@@ -72,7 +72,7 @@ class DebytexMrpLineReport(models.Model):
         string="Datos generales", default=True
     )
     include_parameters = fields.Boolean(string="Parámetros", default=True)
-    include_additive = fields.Boolean(string="Aditivo", default=False)
+    include_additive = fields.Boolean(string="Aditivo", default=True)
     include_production = fields.Boolean(string="Producción", default=True)
     include_quality = fields.Boolean(string="Calidad", default=False)
     include_waste = fields.Boolean(string="Mermas", default=False)
