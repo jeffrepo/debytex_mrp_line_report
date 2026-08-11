@@ -3,28 +3,6 @@
     background: rgba(255, 255, 255, 0.76);
 }
 
-@media (min-width: 1500px) {
-    .debytex-four-line-grid {
-        display: grid !important;
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: clamp(0.75rem, 1.25vw, 1.5rem) !important;
-    }
-
-    .debytex-four-line-grid > * {
-        width: auto !important;
-        min-width: 0 !important;
-    }
-
-    .debytex-order-summary-card {
-        padding: 0.6rem;
-    }
-
-    .debytex-dashboard-summary-table th,
-    .debytex-dashboard-summary-table td {
-        padding: 3px 4px;
-    }
-}
-
 .debytex-summary-card-header {
     margin-bottom: 8px;
 }
@@ -86,6 +64,42 @@
 
 .debytex-summary-card-hint {
     margin-top: 7px;
+}
+
+@media (min-width: 1280px) {
+    .debytex-four-line-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: clamp(0.75rem, 1.25vw, 1.5rem) !important;
+    }
+
+    .debytex-four-line-grid > * {
+        width: auto !important;
+        min-width: 0 !important;
+    }
+
+    .debytex-order-summary-card {
+        padding: 0.6rem;
+    }
+
+    .debytex-dashboard-summary-table th,
+    .debytex-dashboard-summary-table td {
+        padding: 3px 4px;
+    }
+}
+
+@media (min-width: 1280px) and (max-width: 1499.98px) {
+    .debytex-order-summary-card {
+        padding: 0.5rem;
+    }
+
+    .debytex-summary-card-header {
+        margin-bottom: 6px;
+    }
+
+    .debytex-dashboard-summary-table {
+        font-size: 9px;
+    }
 }
 
 .debytex-line-report-modal {
