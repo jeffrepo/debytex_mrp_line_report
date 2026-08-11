@@ -93,4 +93,5 @@ class WorkcenterSelectorWizard(models.TransientModel):
         }
         parameter_values["line_report_parameters_registered"] = True
         self.production_id.write(parameter_values)
-        return super().action_guardar_workcenter_con_turno()
+        super().action_guardar_workcenter_con_turno()
+        return {"type": "ir.actions.client", "tag": "reload"}

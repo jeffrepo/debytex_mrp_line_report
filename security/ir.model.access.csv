@@ -13,3 +13,7 @@ access_mrp_line_report_stop_user,Paro por línea usuario,model_debytex_mrp_line_
 access_mrp_line_report_stop_manager,Paro por línea responsable,model_debytex_mrp_line_report_stop,mrp.group_mrp_manager,1,1,1,1
 access_mrp_line_report_wizard_user,Wizard reporte por línea,model_debytex_mrp_line_report_wizard,mrp.group_mrp_user,1,1,1,1
 access_mrp_line_report_wizard_line_user,Línea wizard reporte por línea,model_debytex_mrp_line_report_wizard_line,mrp.group_mrp_user,1,1,1,1
+access_mrp_shift_history_user,Historial de turnos usuario,model_debytex_mrp_shift_history,mrp.group_mrp_user,1,0,0,0
+access_mrp_shift_history_manager,Historial de turnos responsable,model_debytex_mrp_shift_history,mrp.group_mrp_manager,1,0,0,0
+access_mrp_shift_pause_user,Pausas de turno usuario,model_debytex_mrp_shift_pause,mrp.group_mrp_user,1,0,0,0
+access_mrp_shift_pause_manager,Pausas de turno responsable,model_debytex_mrp_shift_pause,mrp.group_mrp_manager,1,0,0,0

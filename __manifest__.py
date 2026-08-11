@@ -1,6 +1,6 @@
 {
     "name": "Debytex - Reporte de Producción por Línea",
-    "version": "18.0.1.4.2",
+    "version": "18.0.1.5.0",
     "category": "Manufacturing/Reporting",
     "summary": "Reporte técnico y general de producción por línea",
     "description": """
@@ -32,7 +32,9 @@
     "assets": {
         "web.assets_backend": [
             "debytex_mrp_line_report/static/src/xml/mrp_dashboard_report.xml",
+            "debytex_mrp_line_report/static/src/xml/mrp_shift_timer_field.xml",
             "debytex_mrp_line_report/static/src/js/mrp_dashboard_report_patch.js",
+            "debytex_mrp_line_report/static/src/js/mrp_shift_timer_field.js",
             "debytex_mrp_line_report/static/src/css/mrp_dashboard_report.css",
         ],
     },

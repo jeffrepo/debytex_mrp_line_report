@@ -3,6 +3,55 @@
     background: rgba(255, 255, 255, 0.76);
 }
 
+.debytex-active-shift-panel {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+}
+
+.debytex-active-shift-panel > div {
+    min-width: 0;
+}
+
+.debytex-shift-panel-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.debytex-shift-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #166534;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.debytex-shift-timer-paused {
+    color: #a16207;
+}
+
+.debytex-shift-timer-closed {
+    color: #64748b;
+}
+
+@media (max-width: 900px) {
+    .debytex-active-shift-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .debytex-summary-card-header {
     margin-bottom: 8px;
 }

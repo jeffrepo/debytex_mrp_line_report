@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="debytex_mrp_line_report.ShiftTimerField" owl="1">
+        <span t-attf-class="debytex-shift-timer #{stateClass}">
+            <i t-attf-class="fa #{state.state === 'paused' ? 'fa-pause-circle' : (state.state === 'running' ? 'fa-clock-o' : 'fa-stop-circle')}"/>
+            <span t-esc="formattedValue"/>
+        </span>
+    </t>
+</templates>

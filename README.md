@@ -29,6 +29,11 @@ las líneas de producción de Debytex/ECOWOOL.
   2 directamente en la orden de fabricación. Los valores permanecen
   editables en la pestaña **Parámetros de operación** y alimentan el tablero,
   los cálculos y las nuevas capturas PDF.
+- Cada inicio genera una entrada inmutable en **Historial de turnos**, con el
+  centro de trabajo y una copia de todos los parámetros de operación.
+- El turno mantiene un cronómetro de tiempo efectivo en vivo. Las pausas
+  detienen el conteo, conservan motivo y duración, la reanudación continúa
+  desde el acumulado y el cierre fija la duración definitiva.
 
 ## Regla de cálculo
 
