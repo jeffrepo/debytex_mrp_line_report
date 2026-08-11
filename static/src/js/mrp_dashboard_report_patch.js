@@ -3,8 +3,35 @@
 import { registry } from "@web/core/registry";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
+import { onMounted, onPatched, onWillUnmount } from "@odoo/owl";
 
 const MrpDashboard = registry.category("actions").get("mrp_dashboard_tag");
+const SUMMARY_CARD_SELECTOR = ".debytex-order-summary-card";
+const FOUR_LINE_GRID_CLASS = "debytex-four-line-grid";
+
+function findCommonAncestor(elements) {
+    if (!elements.length) {
+        return null;
+    }
+
+    let candidate = elements[0].parentElement;
+    while (candidate && !elements.every((element) => candidate.contains(element))) {
+        candidate = candidate.parentElement;
+    }
+    return candidate;
+}
+
+function findLineGrid(cards) {
+    const commonAncestor = findCommonAncestor(cards);
+    if (!commonAncestor) {
+        return null;
+    }
+
+    const columnsWithOrders = [...commonAncestor.children].filter((child) =>
+        child.querySelector(SUMMARY_CARD_SELECTOR)
+    );
+    return columnsWithOrders.length >= 4 ? commonAncestor : null;
+}
 
 patch(MrpDashboard.prototype, {
     setup() {
@@ -16,6 +43,27 @@ patch(MrpDashboard.prototype, {
         this.state.lineReportError = "";
         this.state.selectedLineReport = null;
         this._lineReportRequestToken = 0;
+        this._debytexLineGrid = null;
+
+        this._updateFourLineLayout = () => {
+            const cards = [...document.querySelectorAll(SUMMARY_CARD_SELECTOR)];
+            const lineGrid = findLineGrid(cards);
+
+            if (this._debytexLineGrid && this._debytexLineGrid !== lineGrid) {
+                this._debytexLineGrid.classList.remove(FOUR_LINE_GRID_CLASS);
+            }
+            if (lineGrid) {
+                lineGrid.classList.add(FOUR_LINE_GRID_CLASS);
+            }
+            this._debytexLineGrid = lineGrid;
+        };
+
+        onMounted(this._updateFourLineLayout);
+        onPatched(this._updateFourLineLayout);
+        onWillUnmount(() => {
+            this._debytexLineGrid?.classList.remove(FOUR_LINE_GRID_CLASS);
+            this._debytexLineGrid = null;
+        });
 
         const originalOpenDetail = this.openDetail;
         const originalCloseDetail = this.closeDetailModal;
