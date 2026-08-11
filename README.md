@@ -10,6 +10,8 @@ las líneas de producción de Debytex/ECOWOOL.
 - Captura persistente de parámetros de operación, calidad, mermas,
   incidencias, ajustes, paros y entrega de turno.
 - Reporte técnico por línea, reporte general o ambos en PDF QWeb.
+- Encabezado institucional compacto en ambos reportes, con título,
+  trazabilidad y logotipo de la compañía sin duplicar su dirección fiscal.
 - Reutilización de órdenes, turnos, rollos, responsables y centros de trabajo
   proporcionados por `custom_novici`.
 - Importación automática de paros registrados en
