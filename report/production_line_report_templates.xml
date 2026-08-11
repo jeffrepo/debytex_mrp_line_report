@@ -1,28 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_production_line_company_header">
-        <div class="debytex_company_header">
-            <table class="debytex_company_header_table">
-                <tbody>
-                    <tr>
-                        <td class="debytex_company_logo_cell">
-                            <img t-if="company.logo"
-                                 t-att-src="image_data_uri(company.logo)"
-                                 t-att-alt="company.name or 'Logo de la compañía'"
-                                 class="debytex_company_logo"/>
-                        </td>
-                        <td class="debytex_company_details">
-                            <div class="debytex_company_name" t-esc="company.name"/>
-                            <div t-if="company.vat"><strong>RFC:</strong> <span t-esc="company.vat"/></div>
-                            <div t-field="company.partner_id"
-                                 t-options="{'widget': 'contact', 'fields': ['address', 'phone'], 'no_marker': True, 'phone_icons': False}"/>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <div t-if="company.report_header"
-                 class="debytex_company_tagline"
-                 t-field="company.report_header"/>
+        <div class="debytex_brand_header">
+            <div class="debytex_brand_text">
+                <h1 t-esc="header_title"/>
+                <div class="debytex_brand_subtitle" t-esc="header_subtitle"/>
+                <span class="debytex_brand_meta">Debytex · Producción · Trazabilidad</span>
+            </div>
+            <div class="debytex_brand_logo_box">
+                <img t-if="company.logo"
+                     t-att-src="image_data_uri(company.logo)"
+                     t-att-alt="company.name or 'Debytex'"
+                     class="debytex_brand_logo"/>
+                <strong t-else="" class="debytex_brand_logo_fallback">Debytex</strong>
+            </div>
         </div>
     </template>
 
@@ -37,17 +28,15 @@
                     <div class="page debytex_line_report">
                         <style>
                             .debytex_line_report { color: #1f2937; font-size: 11px; }
-                            .debytex_company_header { border-bottom: 1px solid #cbd5e1; margin-bottom: 12px; padding-bottom: 8px; }
-                            .debytex_company_header_table { border-collapse: collapse; width: 100%; }
-                            .debytex_company_logo_cell { vertical-align: middle; width: 34%; }
-                            .debytex_company_logo { max-height: 58px; max-width: 190px; }
-                            .debytex_company_details { color: #374151; font-size: 10px; line-height: 1.3; text-align: right; vertical-align: middle; }
-                            .debytex_company_name { color: #111827; font-size: 14px; font-weight: bold; }
-                            .debytex_company_tagline { color: #008b2d; font-size: 10px; font-weight: bold; margin-top: 4px; text-align: center; }
-                            .debytex_company_tagline p { margin: 0; }
-                            .debytex_report_header { border-bottom: 3px solid #1f4e79; margin-bottom: 14px; padding-bottom: 9px; }
-                            .debytex_report_header h2 { color: #1f4e79; margin: 0 0 4px 0; }
-                            .debytex_meta { color: #6b7280; }
+                            .debytex_brand_header { border-bottom: 3px solid #1f4e79; margin-bottom: 10px; min-height: 76px; padding: 3px 150px 13px 0; page-break-inside: avoid; position: relative; }
+                            .debytex_brand_text { min-width: 0; }
+                            .debytex_brand_text h1 { color: #1f4e79; font-size: 27px; line-height: 1.08; margin: 0 0 5px 0; }
+                            .debytex_brand_subtitle { color: #292d32; font-size: 14px; line-height: 1.25; margin: 0; }
+                            .debytex_brand_meta { background: #eef4fb; border-radius: 14px; color: #1f4e79; display: inline-block; font-size: 10px; font-weight: bold; letter-spacing: .2px; margin-top: 8px; padding: 4px 10px; }
+                            .debytex_brand_logo_box { height: 62px; position: absolute; right: 0; text-align: right; top: 5px; width: 135px; }
+                            .debytex_brand_logo { height: auto; max-height: 62px; width: 135px; }
+                            .debytex_brand_logo_fallback { color: #248b42; display: inline-block; font-size: 22px; margin-top: 17px; }
+                            .debytex_trace_head { background: #f8fafc; border-left: 3px solid #1f4e79; color: #6b7280; margin: 0 0 13px 0; padding: 5px 8px; }
                             .debytex_section { margin-top: 14px; page-break-inside: avoid; }
                             .debytex_section h3 { background: #eef4fb; border-left: 5px solid #1f4e79; color: #173b5c; font-size: 13px; margin: 0 0 8px 0; padding: 7px 9px; }
                             .debytex_table { border-collapse: collapse; width: 100%; }
@@ -65,13 +54,13 @@
                         </style>
 
                         <t t-if="doc.report_type in ('general', 'both')">
+                            <t t-set="included_line_names" t-value="', '.join(doc.line_ids.mapped('workcenter_id').mapped('name'))"/>
+                            <t t-set="header_title" t-value="'Reporte General'"/>
+                            <t t-set="header_subtitle" t-value="'Resumen consolidado de %s' % included_line_names if included_line_names else 'Resumen consolidado de producción'"/>
                             <t t-call="debytex_mrp_line_report.report_production_line_company_header"/>
-                            <div class="debytex_report_header">
-                                <h2>Reporte de Producción en Piso</h2>
-                                <div class="debytex_meta">
-                                    <strong t-esc="doc.name"/> · Corte:
-                                    <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
-                                </div>
+                            <div class="debytex_trace_head">
+                                <strong t-esc="doc.name"/> · <strong>Hora de corte:</strong>
+                                <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
                             </div>
                         </t>
 
@@ -133,14 +122,13 @@
                         <t t-if="doc.report_type in ('technical', 'both')">
                             <t t-foreach="doc.line_ids" t-as="line">
                                 <div t-attf-class="#{'debytex_page_break' if doc.report_type == 'both' or line_index &gt; 0 else ''}">
+                                    <t t-set="header_title" t-value="'Reporte de %s' % line.workcenter_id.name"/>
+                                    <t t-set="header_subtitle" t-value="'Documento de control, seguimiento y trazabilidad'"/>
                                     <t t-call="debytex_mrp_line_report.report_production_line_company_header"/>
-                                    <div class="debytex_report_header">
-                                        <h2>Reporte de <span t-esc="line.workcenter_id.name"/></h2>
-                                        <div class="debytex_meta">
-                                            <strong>Estado:</strong> <span t-esc="line.report_status"/> ·
-                                            <strong>Hora de corte:</strong>
-                                            <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
-                                        </div>
+                                    <div class="debytex_trace_head">
+                                        <strong>Estado:</strong> <span t-esc="line.report_status"/> ·
+                                        <strong>Hora de corte:</strong>
+                                        <span t-field="doc.cutoff_datetime" t-options="{'widget': 'datetime'}"/>
                                     </div>
 
                                     <div class="debytex_section" t-if="doc.include_general_data">
