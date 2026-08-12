@@ -93,8 +93,9 @@ class MrpProduction(models.Model):
             or attributes.get("color")
             or ""
         )
-        active_rolls = production.rollo_ids.filtered("active")
-        current_roll = max(active_rolls.mapped("numero_rollo"), default=0)
+        partial_quantities = production._line_report_partial_quantities()
+        rolls_requested = partial_quantities["rolls_requested"]
+        current_roll = partial_quantities["current_roll"]
         useful_width = getattr(
             production.workcenter_id, "x_ancho_util", 0.0
         ) or getattr(production.workcenter_id, "eje_cm", 0.0)
@@ -132,7 +133,7 @@ class MrpProduction(models.Model):
             source_label = _("Parámetros registrados en la orden")
 
         computed = compute_production(
-            rolls_requested=production.product_qty,
+            rolls_requested=rolls_requested,
             current_roll=current_roll,
             rolls_per_axis=rolls_per_axis,
             roll_length=roll_length,
@@ -163,7 +164,7 @@ class MrpProduction(models.Model):
                 if snapshot_line and snapshot_line.color_code
                 else helper_wizard._color_code(color)
             ),
-            "rolls_requested": production.product_qty,
+            "rolls_requested": rolls_requested,
             "current_roll": current_roll,
             "rolls_missing": computed["rolls_missing"],
             "remaining_time_text": computed["remaining_time_text"],
@@ -445,6 +446,13 @@ class MrpProduction(models.Model):
         )
         if production.line_report_parameters_registered:
             values.update(production._line_report_operation_values())
+        partial_quantities = production._line_report_partial_quantities()
+        values.update(
+            {
+                "rolls_requested": partial_quantities["rolls_requested"],
+                "current_roll": partial_quantities["current_roll"],
+            }
+        )
         return values
 
     @api.model
@@ -549,36 +557,52 @@ class MrpProduction(models.Model):
             "recommendations": line.recommendations or "",
         }
         production = line.production_id
+        partial_quantities = production._line_report_partial_quantities()
+        cutoff_datetime = fields.Datetime.now()
         if production.line_report_parameters_registered:
             values.update(production._line_report_operation_values())
-            computed = compute_production(
-                rolls_requested=line.rolls_requested,
-                current_roll=line.current_roll,
-                rolls_per_axis=line.rolls_per_axis,
-                roll_length=line.roll_length,
-                winder_speed=production.line_report_winder_speed,
-                belt_speed=production.line_report_belt_speed,
-                manual_minutes=line.manual_minutes_per_roll,
-                time_mode=line.time_mode,
-                cutoff_datetime=report.cutoff_datetime,
-            )
-            values.update(
-                {
-                    "source_label": _(
-                        "Captura guardada: %s · parámetros actuales de la orden"
-                    )
-                    % report.name,
-                    "k_constant": production.line_report_k_constant,
-                    "rolls_missing": computed["rolls_missing"],
-                    "pending_axes": computed["pending_axes"],
-                    "minutes_per_axis": computed["minutes_per_axis"],
-                    "remaining_hours": computed["remaining_hours"],
-                    "remaining_time_text": computed["remaining_time_text"],
-                    "estimated_finish": self._format_dashboard_datetime(
-                        computed["estimated_finish"]
-                    ),
-                }
-            )
+            values["source_label"] = _(
+                "Captura guardada: %s · parámetros actuales de la orden"
+            ) % report.name
+            values["k_constant"] = production.line_report_k_constant
+        computed = compute_production(
+            rolls_requested=partial_quantities["rolls_requested"],
+            current_roll=partial_quantities["current_roll"],
+            rolls_per_axis=line.rolls_per_axis,
+            roll_length=line.roll_length,
+            winder_speed=values["winder_speed"],
+            belt_speed=values["belt_speed"],
+            manual_minutes=line.manual_minutes_per_roll,
+            time_mode=line.time_mode,
+            cutoff_datetime=cutoff_datetime,
+        )
+        if (
+            partial_quantities["rolls_requested"] > 0
+            and computed["rolls_missing"] <= 0
+        ):
+            report_status = _("Final / orden terminada")
+        elif partial_quantities["current_roll"] > 0:
+            report_status = _("Seguimiento parcial")
+        else:
+            report_status = _("Captura / registro inicial")
+        values.update(
+            {
+                "cutoff_datetime": self._format_dashboard_datetime(
+                    cutoff_datetime
+                ),
+                "rolls_requested": partial_quantities["rolls_requested"],
+                "current_roll": partial_quantities["current_roll"],
+                "rolls_missing": computed["rolls_missing"],
+                "report_status": report_status,
+                "pending_axes": computed["pending_axes"],
+                "minutes_per_axis": computed["minutes_per_axis"],
+                "remaining_hours": computed["remaining_hours"],
+                "remaining_time_text": computed["remaining_time_text"],
+                "estimated_finish": self._format_dashboard_datetime(
+                    computed["estimated_finish"]
+                ),
+            }
+        )
         return values
 
     @api.model

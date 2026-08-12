@@ -166,8 +166,7 @@ class DebytexMrpLineReportWizard(models.TransientModel):
             or attributes.get("color")
             or ""
         )
-        active_rolls = production.rollo_ids.filtered("active")
-        current_roll = max(active_rolls.mapped("numero_rollo"), default=0)
+        partial_quantities = production._line_report_partial_quantities()
         useful_width = getattr(workcenter, "x_ancho_util", 0.0) or getattr(
             workcenter, "eje_cm", 0.0
         )
@@ -200,8 +199,8 @@ class DebytexMrpLineReportWizard(models.TransientModel):
                 "roll_length": roll_length,
                 "color": color,
                 "color_code": self._color_code(color),
-                "rolls_requested": production.product_qty,
-                "current_roll": current_roll,
+                "rolls_requested": partial_quantities["rolls_requested"],
+                "current_roll": partial_quantities["current_roll"],
                 "rolls_per_axis": rolls_per_axis,
                 "stop_ids": self._prepare_stop_commands(production, workorder),
             }
