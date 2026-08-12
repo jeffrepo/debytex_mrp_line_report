@@ -1,7 +1,8 @@
 import re
 import unicodedata
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 LINE_REPORT_PARAMETER_FIELD_MAP = {
@@ -85,6 +86,32 @@ class MrpProduction(models.Model):
                 == "uv"
                 else ""
             )
+
+    def action_open_workcenter_selector_iniciar_turno(self):
+        """Open shift parameters only after the line was selected explicitly."""
+        self.ensure_one()
+        if not self.workcenter_id:
+            raise UserError(
+                _(
+                    "Debe seleccionar una línea antes de iniciar el turno.\n\n"
+                    "Utilice el botón 'Seleccionar Línea' y vuelva a intentar."
+                )
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Iniciar turno"),
+            "res_model": "workcenter.selector.wizard",
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "custom_novici.view_workcenter_selector_wizard_form_con_turno"
+            ).id,
+            "target": "new",
+            "context": {
+                **self.env.context,
+                "default_production_id": self.id,
+                "default_workcenter_id": self.workcenter_id.id,
+            },
+        }
 
     @api.model_create_multi
     def create(self, vals_list):

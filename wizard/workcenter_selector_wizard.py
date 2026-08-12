@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 from ..models.mrp_production_parameters import (
     LINE_REPORT_PARAMETER_FIELD_MAP,
@@ -62,6 +63,9 @@ class WorkcenterSelectorWizard(models.TransientModel):
         if not production:
             return values
 
+        if "workcenter_id" in fields_list:
+            values["workcenter_id"] = production.workcenter_id.id
+
         for parameter_field in LINE_REPORT_PARAMETER_FIELD_MAP:
             if parameter_field in fields_list:
                 values[parameter_field] = getattr(production, parameter_field)
@@ -87,6 +91,21 @@ class WorkcenterSelectorWizard(models.TransientModel):
 
     def action_guardar_workcenter_con_turno(self):
         self.ensure_one()
+        selected_workcenter = self.production_id.workcenter_id
+        if not selected_workcenter:
+            raise UserError(
+                _(
+                    "La orden no tiene una línea seleccionada. Cierre esta ventana, "
+                    "utilice 'Seleccionar Línea' y vuelva a iniciar el turno."
+                )
+            )
+        if self.workcenter_id != selected_workcenter:
+            raise UserError(
+                _(
+                    "El centro de trabajo del turno debe coincidir con la línea "
+                    "seleccionada en la orden de fabricación."
+                )
+            )
         parameter_values = {
             production_field: getattr(self, production_field)
             for production_field in LINE_REPORT_PARAMETER_FIELD_MAP
