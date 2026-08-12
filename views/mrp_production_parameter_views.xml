@@ -76,9 +76,13 @@
                         </div>
                     </div>
 
-                    <separator string="Turnos registrados"/>
+                    <div class="alert alert-info" role="alert" invisible="not line_report_shift_history_ids">
+                        Cada fila conserva el centro de trabajo, el cronómetro y una copia de los parámetros registrados al iniciar ese turno.
+                        Abra un registro para consultar la captura completa; los cambios posteriores en la orden no modifican este historial.
+                    </div>
+                    <separator string="Turnos y parámetros registrados"/>
                     <field name="line_report_shift_history_ids" nolabel="1" readonly="1">
-                        <list string="Historial de turnos" create="0" edit="0" delete="0">
+                        <list string="Historial de turnos y parámetros" create="0" edit="0" delete="0">
                             <field name="turn_number"/>
                             <field name="name"/>
                             <field name="workcenter_id"/>
@@ -91,6 +95,22 @@
                                    decoration-muted="state == 'closed'"/>
                             <field name="elapsed_display"/>
                             <field name="pause_display" optional="show"/>
+                            <field name="target_grammage" optional="show"/>
+                            <field name="pump_rpm" optional="show"/>
+                            <field name="belt_speed" optional="show"/>
+                            <field name="winder_speed" optional="show"/>
+                            <field name="k_constant" optional="show"/>
+                            <field name="suction" optional="hide"/>
+                            <field name="cooling" optional="hide"/>
+                            <field name="range_hood" optional="hide"/>
+                            <field name="spinning_box" optional="hide"/>
+                            <field name="temperatures" optional="hide"/>
+                            <field name="upper_calender" optional="hide"/>
+                            <field name="lower_calender" optional="hide"/>
+                            <field name="calender_pressure" optional="hide"/>
+                            <field name="additive" optional="hide"/>
+                            <field name="additive_code" optional="hide"/>
+                            <field name="additive_percentage" optional="hide"/>
                             <field name="started_by_id" optional="hide"/>
                             <field name="closed_by_id" optional="hide"/>
                         </list>
@@ -116,7 +136,10 @@
                                     </group>
                                 </group>
                                 <notebook>
-                                    <page string="Parámetros de operación">
+                                    <page string="Parámetros capturados al iniciar">
+                                        <div class="alert alert-info" role="alert">
+                                            Esta es la fotografía de los parámetros ingresados al iniciar el turno y no cambia cuando se editan los valores actuales de la orden.
+                                        </div>
                                         <group>
                                             <group>
                                                 <field name="target_grammage" readonly="1"/>
