@@ -4,6 +4,8 @@ import unicodedata
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from ..services.partial_orders import summarize_partial_orders
+
 
 LINE_REPORT_PARAMETER_FIELD_MAP = {
     "line_report_target_grammage": "target_grammage",
@@ -135,6 +137,25 @@ class MrpProduction(models.Model):
                 LINE_REPORT_PARAMETER_FIELD_MAP.items()
             )
         }
+
+    def _line_report_partial_quantities(self):
+        """Return requested and produced rolls for the full partial chain."""
+        self.ensure_one()
+        get_related_orders = getattr(self, "_get_all_related_orders", None)
+        related_orders = (
+            get_related_orders() if callable(get_related_orders) else self
+        )
+        related_orders = related_orders.exists() or self
+        initial_demand = max(
+            related_orders.mapped("initial_demand_qty") or [0.0]
+        )
+        return summarize_partial_orders(
+            initial_demand=initial_demand,
+            planned_quantities=related_orders.mapped("product_qty"),
+            produced_quantities=related_orders.mapped(
+                "total_rollos_fabricados"
+            ),
+        )
 
     def _line_report_default_target_grammage(self):
         self.ensure_one()
