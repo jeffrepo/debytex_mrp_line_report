@@ -16,5 +16,6 @@ class PauseShiftWizard(models.TransientModel):
             reason_code=self.motivo,
             reason_label=reason_options.get(self.motivo, _("Pausa")),
             description=self.descripcion_otros or "",
+            workorder=self.workorder_id,
         )
         return {"type": "ir.actions.client", "tag": "reload"}
