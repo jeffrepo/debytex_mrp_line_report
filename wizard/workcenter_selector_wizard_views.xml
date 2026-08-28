@@ -37,8 +37,9 @@
             <xpath expr="//form/group[field[@name='workcenter_id']]" position="after">
                 <separator string="2. Parámetros de operación registrados por centro"/>
                 <div class="alert alert-info" role="alert">
-                    Complete los parámetros de cada línea. Puede editar las columnas
-                    visibles o abrir una fila para capturar el formulario completo.
+                    Complete los parámetros de cada línea. Use el botón
+                    <strong>Vista</strong> para abrir y llenar cómodamente el formulario
+                    completo de cada centro de trabajo.
                     Al iniciar se guardará una entrada independiente en el historial por
                     cada centro de trabajo.
                 </div>
