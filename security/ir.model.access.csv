@@ -17,3 +17,5 @@ access_mrp_shift_history_user,Historial de turnos usuario,model_debytex_mrp_shif
 access_mrp_shift_history_manager,Historial de turnos responsable,model_debytex_mrp_shift_history,mrp.group_mrp_manager,1,0,0,0
 access_mrp_shift_pause_user,Pausas de turno usuario,model_debytex_mrp_shift_pause,mrp.group_mrp_user,1,0,0,0
 access_mrp_shift_pause_manager,Pausas de turno responsable,model_debytex_mrp_shift_pause,mrp.group_mrp_manager,1,0,0,0
+access_workcenter_selector_parameter_line_user,Parámetros por centro usuario,model_workcenter_selector_parameter_line,mrp.group_mrp_user,1,1,1,1
+access_workcenter_selector_parameter_line_manager,Parámetros por centro responsable,model_workcenter_selector_parameter_line,mrp.group_mrp_manager,1,1,1,1

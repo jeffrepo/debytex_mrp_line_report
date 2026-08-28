@@ -29,6 +29,20 @@ LINE_REPORT_PARAMETER_FIELD_MAP = {
 class MrpProduction(models.Model):
     _inherit = "mrp.production"
 
+    line_report_workcenter_ids = fields.Many2many(
+        "mrp.workcenter",
+        "debytex_mrp_production_workcenter_rel",
+        "production_id",
+        "workcenter_id",
+        string="Líneas de producción",
+        copy=False,
+        domain=[("active", "=", True)],
+        help=(
+            "Centros de trabajo seleccionados para ejecutar esta orden en "
+            "paralelo. La primera línea se conserva también como línea principal "
+            "para compatibilidad con los procesos existentes."
+        ),
+    )
     line_report_parameters_registered = fields.Boolean(
         string="Parámetros de operación registrados",
         copy=False,
@@ -90,12 +104,13 @@ class MrpProduction(models.Model):
             )
 
     def action_open_workcenter_selector_iniciar_turno(self):
-        """Open shift parameters only after the line was selected explicitly."""
+        """Open one parameter capture for every explicitly selected line."""
         self.ensure_one()
-        if not self.workcenter_id:
+        workcenters = self.line_report_workcenter_ids or self.workcenter_id
+        if not workcenters:
             raise UserError(
                 _(
-                    "Debe seleccionar una línea antes de iniciar el turno.\n\n"
+                    "Debe seleccionar al menos una línea antes de iniciar el turno.\n\n"
                     "Utilice el botón 'Seleccionar Línea' y vuelva a intentar."
                 )
             )
@@ -111,7 +126,8 @@ class MrpProduction(models.Model):
             "context": {
                 **self.env.context,
                 "default_production_id": self.id,
-                "default_workcenter_id": self.workcenter_id.id,
+                "default_workcenter_id": (self.workcenter_id or workcenters[:1]).id,
+                "default_workcenter_ids": [(6, 0, workcenters.ids)],
             },
         }
 

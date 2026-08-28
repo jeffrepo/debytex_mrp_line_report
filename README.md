@@ -32,10 +32,13 @@ las líneas de producción de Debytex/ECOWOOL.
   editables en la pestaña **Parámetros de operación** y alimentan el tablero,
   los cálculos y las nuevas capturas PDF.
 - Antes de iniciar el turno es obligatorio utilizar **Seleccionar Línea**. El
-  wizard muestra ese centro de trabajo en solo lectura y no asigna líneas de
-  forma automática.
-- Cada inicio genera una entrada inmutable en **Historial de turnos**, con el
-  centro de trabajo y una copia de todos los parámetros de operación.
+  selector permite elegir una o varias líneas y no las asigna de forma
+  automática.
+- El wizard **Iniciar Turno** muestra todas las líneas seleccionadas y solicita
+  un bloque independiente de parámetros de operación por cada una.
+- El inicio arranca una orden de trabajo por línea y genera una entrada
+  inmutable por cada centro en **Historial de turnos**. Las entradas del mismo
+  inicio comparten número de turno y conservan sus propios parámetros.
 - La lista del historial presenta los parámetros operativos principales como
   columnas y permite abrir cada turno para consultar la captura completa.
 - El turno mantiene un cronómetro de tiempo efectivo en vivo. Las pausas

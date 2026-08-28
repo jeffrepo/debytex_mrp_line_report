@@ -364,23 +364,25 @@ class MrpProduction(models.Model):
     def action_iniciar_turno(self):
         result = super().action_iniciar_turno()
         self.ensure_one()
-        self._line_report_start_shift_history()
+        if not self.env.context.get("line_report_skip_history"):
+            self._line_report_start_shift_histories()
         return result
 
     def action_cerrar_turno(self):
         self.ensure_one()
-        shift = self._line_report_get_active_shift(create_if_missing=True)
+        shifts = self._line_report_get_active_shifts(create_if_missing=True)
         result = super().action_cerrar_turno()
-        if shift:
+        if shifts:
             closure = self.env["produccion.turno.cierre"].sudo().search(
                 [
                     ("production_id", "=", self.id),
-                    ("fecha_inicio", "=", shift.started_at),
+                    ("fecha_inicio", "=", shifts[:1].started_at),
                 ],
                 order="fecha_cierre desc, id desc",
                 limit=1,
             )
-            shift._close(fields.Datetime.now(), closure)
+            for shift in shifts:
+                shift._close(fields.Datetime.now(), closure)
             self.sudo().line_report_active_shift_id = False
         return result
 
@@ -388,107 +390,228 @@ class MrpProduction(models.Model):
         super().action_reanudar_workorder_activa()
         return {"type": "ir.actions.client", "tag": "reload"}
 
-    def _line_report_start_shift_history(self):
+    def _line_report_start_workcenter_shifts(self, parameter_values):
+        """Start every selected workcenter and persist its parameter snapshot."""
+        self.ensure_one()
+        workcenters = self.line_report_workcenter_ids or self.workcenter_id
+        primary = self.workcenter_id or workcenters[:1]
+
+        # Keep the original implementation responsible for the production-wide
+        # start date, serial number, consumption and primary work order.
+        self.with_context(line_report_skip_history=True).action_iniciar_turno()
+
+        active_workorders = self.workorder_ids.filtered(
+            lambda workorder: workorder.state not in ("done", "cancel")
+        )
+        primary_workorder = active_workorders.filtered(
+            lambda workorder: workorder.workcenter_id == primary
+        ).sorted(key=lambda workorder: workorder.id, reverse=True)[:1]
+
+        workorders_by_workcenter = {
+            primary.id: primary_workorder,
+        }
+        for workcenter in workcenters - primary:
+            workorder = active_workorders.filtered(
+                lambda item, center=workcenter: item.workcenter_id == center
+            ).sorted(key=lambda item: item.id, reverse=True)[:1]
+            if not workorder:
+                workorder = self.env["mrp.workorder"].create(
+                    {
+                        "name": _("%s - Turno %s - %s")
+                        % (
+                            self.name,
+                            len(self.turno_cierre_ids) + 1,
+                            workcenter.display_name,
+                        ),
+                        "production_id": self.id,
+                        "workcenter_id": workcenter.id,
+                        "product_id": self.product_id.id,
+                        "product_uom_id": self.product_uom_id.id,
+                        "qty_producing": self.product_qty,
+                        "qty_production": self.product_qty,
+                        "state": "ready",
+                    }
+                )
+            if workorder.state not in ("done", "progress"):
+                workorder.button_start()
+            workorders_by_workcenter[workcenter.id] = workorder
+
+        secondary_names = (workcenters - primary).mapped("display_name")
+        if secondary_names:
+            self.message_post(
+                body=_("Turno iniciado también en: %s")
+                % ", ".join(secondary_names),
+                message_type="notification",
+            )
+        return self._line_report_start_shift_histories(
+            parameter_values=parameter_values,
+            workorders_by_workcenter=workorders_by_workcenter,
+        )
+
+    def _line_report_start_shift_histories(
+        self, parameter_values=None, workorders_by_workcenter=None
+    ):
         self.ensure_one()
         started_at = self.fecha_inicio_turno or fields.Datetime.now()
-        existing = self._line_report_get_active_shift()
-        if existing:
-            return existing
-        stale_shifts = self.env["debytex.mrp.shift.history"].sudo().search(
+        workcenters = self.line_report_workcenter_ids or self.workcenter_id
+        if not workcenters:
+            return self.env["debytex.mrp.shift.history"]
+
+        active_shifts = self.env["debytex.mrp.shift.history"].sudo().search(
             [
                 ("production_id", "=", self.id),
                 ("state", "in", ("running", "paused")),
             ]
         )
+        stale_shifts = active_shifts.filtered(
+            lambda shift: fields.Datetime.to_datetime(shift.started_at)
+            != fields.Datetime.to_datetime(started_at)
+        )
         for stale_shift in stale_shifts:
             stale_shift._close(started_at)
-        workorder = self.workorder_ids.filtered(
-            lambda item: item.state not in ("done", "cancel")
-        ).sorted(key=lambda item: item.id, reverse=True)[:1]
-        values = {
-            "production_id": self.id,
-            "workcenter_id": self.workcenter_id.id,
-            "workorder_id": workorder.id if workorder else False,
-            "started_at": started_at,
-            "running_since": started_at,
-            "started_by_id": self.env.user.id,
-            "state": "running",
-        }
-        values.update(
-            {
-                history_field: getattr(self, production_field)
-                for production_field, history_field in (
-                    LINE_REPORT_PARAMETER_FIELD_MAP.items()
-                )
-            }
-        )
-        shift = self.env["debytex.mrp.shift.history"].sudo().create(values)
-        self.sudo().line_report_active_shift_id = shift
-        if self.en_pausa:
-            active_productivity = self.env[
-                "mrp.workcenter.productivity"
-            ].sudo().search(
-                [
-                    ("workorder_id", "=", workorder.id),
-                    ("date_end", "=", False),
-                ],
-                order="date_start desc, id desc",
+        current_shifts = active_shifts - stale_shifts
+        turn_number = current_shifts[:1].turn_number
+        if not turn_number:
+            last_shift = self.env["debytex.mrp.shift.history"].sudo().search(
+                [("production_id", "=", self.id)],
+                order="turn_number desc, id desc",
                 limit=1,
             )
-            pause_reason = (
-                active_productivity.description
-                or getattr(workorder, "descripcion_pausa_actual", "")
-                or _("Pausa activa al actualizar el módulo")
-            )
-            shift._pause(
-                active_productivity.date_start or fields.Datetime.now(),
-                reason_code=getattr(workorder, "motivo_pausa_actual", "") or "",
-                reason_label=pause_reason,
-            )
-        return shift
+            turn_number = (last_shift.turn_number or 0) + 1
 
-    def _line_report_get_active_shift(self, create_if_missing=False):
+        parameter_values = parameter_values or {}
+        workorders_by_workcenter = workorders_by_workcenter or {}
+        shifts = current_shifts
+        for workcenter in workcenters:
+            shift = current_shifts.filtered(
+                lambda item, center=workcenter: item.workcenter_id == center
+            )[:1]
+            if shift:
+                continue
+            workorder = workorders_by_workcenter.get(workcenter.id)
+            if not workorder:
+                workorder = self.workorder_ids.filtered(
+                    lambda item, center=workcenter: (
+                        item.state not in ("done", "cancel")
+                        and item.workcenter_id == center
+                    )
+                ).sorted(key=lambda item: item.id, reverse=True)[:1]
+            values = {
+                "name": _("%s - Turno %s - %s")
+                % (self.name, turn_number, workcenter.display_name),
+                "turn_number": turn_number,
+                "production_id": self.id,
+                "workcenter_id": workcenter.id,
+                "workorder_id": workorder.id if workorder else False,
+                "started_at": started_at,
+                "running_since": started_at,
+                "started_by_id": self.env.user.id,
+                "state": "running",
+            }
+            values.update(
+                parameter_values.get(workcenter.id)
+                or {
+                    history_field: getattr(self, production_field)
+                    for production_field, history_field in (
+                        LINE_REPORT_PARAMETER_FIELD_MAP.items()
+                    )
+                }
+            )
+            shift = self.env["debytex.mrp.shift.history"].sudo().create(values)
+            shifts |= shift
+            if workorder and getattr(workorder, "en_pausa", False):
+                active_productivity = self.env[
+                    "mrp.workcenter.productivity"
+                ].sudo().search(
+                    [
+                        ("workorder_id", "=", workorder.id),
+                        ("date_end", "=", False),
+                    ],
+                    order="date_start desc, id desc",
+                    limit=1,
+                )
+                pause_reason = (
+                    active_productivity.description
+                    or getattr(workorder, "descripcion_pausa_actual", "")
+                    or _("Pausa activa al actualizar el módulo")
+                )
+                shift._pause(
+                    active_productivity.date_start or fields.Datetime.now(),
+                    reason_code=getattr(workorder, "motivo_pausa_actual", "") or "",
+                    reason_label=pause_reason,
+                )
+
+        primary = shifts.filtered(
+            lambda shift: shift.workcenter_id == self.workcenter_id
+        )[:1] or shifts[:1]
+        self.sudo().line_report_active_shift_id = primary
+        return shifts
+
+    def _line_report_start_shift_history(self):
+        """Backward-compatible singular entry point used by older integrations."""
+        return self._line_report_start_shift_histories()[:1]
+
+    def _line_report_get_active_shifts(self, create_if_missing=False):
         self.ensure_one()
         expected_start = fields.Datetime.to_datetime(self.fecha_inicio_turno)
-        shift = self.line_report_active_shift_id.sudo()
-        if (
-            shift
-            and shift.state != "closed"
-            and (
-                not expected_start
-                or fields.Datetime.to_datetime(shift.started_at) == expected_start
-            )
-        ):
-            return shift
         domain = [
             ("production_id", "=", self.id),
             ("state", "in", ("running", "paused")),
         ]
         if expected_start:
             domain.append(("started_at", "=", expected_start))
-        shift = self.env["debytex.mrp.shift.history"].sudo().search(
+        shifts = self.env["debytex.mrp.shift.history"].sudo().search(
             domain,
             order="started_at desc, id desc",
-            limit=1,
         )
-        if shift:
-            self.sudo().line_report_active_shift_id = shift
-            return shift
-        if create_if_missing and self.fecha_inicio_turno:
-            return self._line_report_start_shift_history()
-        return shift
+        if not shifts and create_if_missing and self.fecha_inicio_turno:
+            shifts = self._line_report_start_shift_histories()
+        if shifts:
+            primary = shifts.filtered(
+                lambda shift: shift.workcenter_id == self.workcenter_id
+            )[:1] or shifts[:1]
+            self.sudo().line_report_active_shift_id = primary
+        return shifts
+
+    def _line_report_get_active_shift(
+        self, create_if_missing=False, workorder=False, workcenter=False
+    ):
+        shifts = self._line_report_get_active_shifts(create_if_missing)
+        if workorder:
+            shift = shifts.filtered(
+                lambda item: item.workorder_id == workorder
+            )[:1]
+            if shift:
+                return shift
+            workcenter = workorder.workcenter_id
+        if workcenter:
+            return shifts.filtered(
+                lambda item: item.workcenter_id == workcenter
+            )[:1]
+        return shifts.filtered(
+            lambda item: item.workcenter_id == self.workcenter_id
+        )[:1] or shifts[:1]
 
     def _line_report_pause_shift(
-        self, paused_at, reason_code="", reason_label="", description=""
+        self,
+        paused_at,
+        reason_code="",
+        reason_label="",
+        description="",
+        workorder=False,
     ):
         self.ensure_one()
-        shift = self._line_report_get_active_shift(create_if_missing=True)
+        shift = self._line_report_get_active_shift(
+            create_if_missing=True, workorder=workorder
+        )
         if shift:
             shift._pause(paused_at, reason_code, reason_label, description)
 
-    def _line_report_resume_shift(self, resumed_at):
+    def _line_report_resume_shift(self, resumed_at, workorder=False):
         self.ensure_one()
-        shift = self._line_report_get_active_shift(create_if_missing=True)
+        shift = self._line_report_get_active_shift(
+            create_if_missing=True, workorder=workorder
+        )
         if shift:
             shift._resume(resumed_at)
 
@@ -518,5 +641,7 @@ class MrpWorkorder(models.Model):
     def action_reanudar_turno(self):
         result = super().action_reanudar_turno()
         self.ensure_one()
-        self.production_id._line_report_resume_shift(fields.Datetime.now())
+        self.production_id._line_report_resume_shift(
+            fields.Datetime.now(), workorder=self
+        )
         return result

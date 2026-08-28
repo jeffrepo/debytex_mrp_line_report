@@ -8,8 +8,15 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Parámetros de operación" name="line_report_parameters">
                     <div class="alert alert-info" role="alert">
-                        Estos datos se solicitan al iniciar el turno, pueden actualizarse aquí y se utilizan en el tablero y en el reporte PDF.
+                        Los parámetros se solicitan por cada línea al iniciar el turno.
+                        Este bloque conserva los valores de la línea principal para
+                        compatibilidad con el tablero y el reporte PDF; las capturas de
+                        todas las líneas quedan en el historial.
                     </div>
+                    <field name="line_report_workcenter_ids"
+                           widget="many2many_tags"
+                           readonly="1"
+                           options="{'no_create': True, 'no_open': True}"/>
                     <field name="line_report_parameters_registered" invisible="1"/>
                     <group>
                         <group>
@@ -77,7 +84,8 @@
                     </div>
 
                     <div class="alert alert-info" role="alert" invisible="not line_report_shift_history_ids">
-                        Cada fila conserva el centro de trabajo, el cronómetro y una copia de los parámetros registrados al iniciar ese turno.
+                        Cada fila conserva el centro de trabajo, su orden de trabajo, el cronómetro y una copia de los parámetros registrados al iniciar ese turno.
+                        Cuando se seleccionan varias líneas, todas comparten el número de turno y aparecen como filas separadas.
                         Abra un registro para consultar la captura completa; los cambios posteriores en la orden no modifican este historial.
                     </div>
                     <separator string="Turnos y parámetros registrados"/>
