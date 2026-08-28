@@ -114,10 +114,14 @@ class MrpProduction(models.Model):
                     "Utilice el botón 'Seleccionar Línea' y vuelva a intentar."
                 )
             )
+        wizard = self.env[
+            "workcenter.selector.wizard"
+        ]._line_report_create_shift_wizard(self)
         return {
             "type": "ir.actions.act_window",
             "name": _("Iniciar turno"),
             "res_model": "workcenter.selector.wizard",
+            "res_id": wizard.id,
             "view_mode": "form",
             "view_id": self.env.ref(
                 "custom_novici.view_workcenter_selector_wizard_form_con_turno"

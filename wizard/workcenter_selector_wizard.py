@@ -73,6 +73,32 @@ class WorkcenterSelectorWizard(models.TransientModel):
             ] = production._line_report_default_target_grammage()
         return result
 
+    @api.model
+    def _line_report_create_shift_wizard(self, production):
+        """Persist the wizard lines so their full forms can open immediately."""
+        production.ensure_one()
+        workcenters = production.line_report_workcenter_ids
+        if not workcenters and production.workcenter_id:
+            workcenters = production.workcenter_id
+        primary = production.workcenter_id or workcenters[:1]
+        return self.create(
+            {
+                "production_id": production.id,
+                "workcenter_id": primary.id,
+                "workcenter_ids": [(6, 0, workcenters.ids)],
+                "line_parameter_ids": [
+                    (
+                        0,
+                        0,
+                        self._line_report_parameter_defaults(
+                            production, workcenter
+                        ),
+                    )
+                    for workcenter in workcenters
+                ],
+            }
+        )
+
     def _line_report_selected_workcenters(self):
         self.ensure_one()
         return self.workcenter_ids or self.production_id.line_report_workcenter_ids
