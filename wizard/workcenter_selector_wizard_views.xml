@@ -23,6 +23,19 @@
         <field name="model">workcenter.selector.wizard</field>
         <field name="inherit_id" ref="custom_novici.view_workcenter_selector_wizard_form_con_turno"/>
         <field name="arch" type="xml">
+            <xpath expr="//form/group[1]" position="before">
+                <header>
+                    <button name="action_guardar_workcenter_con_turno"
+                            type="object"
+                            string="Guardar e Iniciar Turno"
+                            class="btn-primary"/>
+                    <button name="action_cancel_and_return"
+                            type="object"
+                            string="Cancelar"
+                            class="btn-secondary"/>
+                </header>
+            </xpath>
+            <xpath expr="//form/footer" position="replace"/>
             <xpath expr="//form/group/field[@name='workcenter_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
                 <attribute name="required">0</attribute>
@@ -37,15 +50,16 @@
             <xpath expr="//form/group[field[@name='workcenter_id']]" position="after">
                 <separator string="2. Parámetros de operación registrados por centro"/>
                 <div class="alert alert-info" role="alert">
-                    Complete los parámetros de cada línea. Use
-                    <strong>Capturar parámetros</strong> para llenar el formulario
-                    completo en pantalla y luego regresar a este asistente.
+                    Complete los parámetros de cada línea. Use el botón
+                    <strong>Vista</strong> de cada fila para abrir el formulario completo
+                    en una ventana, sin salir de este asistente.
                     Al iniciar se guardará una entrada independiente en el historial por
                     cada centro de trabajo.
                 </div>
                 <field name="line_parameter_ids" nolabel="1">
                     <list string="Parámetros por centro de trabajo"
                           editable="bottom"
+                          open_form_view="1"
                           create="0"
                           delete="0">
                         <field name="workcenter_id" readonly="1"/>
@@ -65,74 +79,55 @@
                         <field name="line_report_additive" optional="hide"/>
                         <field name="line_report_additive_code" optional="hide"/>
                         <field name="line_report_additive_percentage" optional="hide"/>
-                        <button name="action_open_parameter_form"
-                                type="object"
-                                string="Capturar parámetros"
-                                icon="fa-external-link"
-                                class="btn-primary"/>
                     </list>
+                    <form string="Parámetros del centro de trabajo">
+                        <sheet>
+                            <div class="alert alert-info" role="alert">
+                                Complete los parámetros de esta línea y guarde la
+                                ventana para volver al inicio de turno.
+                            </div>
+                            <div class="oe_title">
+                                <label for="workcenter_id"/>
+                                <h1>
+                                    <field name="workcenter_id"
+                                           readonly="1"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </h1>
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="line_report_target_grammage"/>
+                                    <field name="line_report_suction"/>
+                                    <field name="line_report_range_hood"/>
+                                    <field name="line_report_winder_speed"/>
+                                    <field name="line_report_spinning_box"/>
+                                    <label for="line_report_upper_calender" string="Calandras superior / inferior"/>
+                                    <div class="o_row">
+                                        <field name="line_report_upper_calender" nolabel="1" placeholder="Superior"/>
+                                        <span class="mx-2">/</span>
+                                        <field name="line_report_lower_calender" nolabel="1" placeholder="Inferior"/>
+                                    </div>
+                                    <label for="line_report_additive" string="Aditivo / código"/>
+                                    <div class="o_row">
+                                        <field name="line_report_additive" nolabel="1" placeholder="Aditivo"/>
+                                        <span class="mx-2">/</span>
+                                        <field name="line_report_additive_code" nolabel="1" placeholder="Código"/>
+                                    </div>
+                                </group>
+                                <group>
+                                    <field name="line_report_pump_rpm"/>
+                                    <field name="line_report_cooling"/>
+                                    <field name="line_report_belt_speed"/>
+                                    <field name="line_report_k_constant" readonly="1"/>
+                                    <field name="line_report_temperatures"/>
+                                    <field name="line_report_calender_pressure"/>
+                                    <field name="line_report_additive_percentage"/>
+                                </group>
+                            </group>
+                        </sheet>
+                    </form>
                 </field>
             </xpath>
-        </field>
-    </record>
-
-    <record id="view_workcenter_selector_parameter_line_form" model="ir.ui.view">
-        <field name="name">workcenter.selector.parameter.line.form</field>
-        <field name="model">workcenter.selector.parameter.line</field>
-        <field name="arch" type="xml">
-            <form string="Parámetros del centro de trabajo">
-                <header>
-                    <button name="action_save_and_return"
-                            type="object"
-                            string="Guardar y volver a Iniciar turno"
-                            class="btn-primary"/>
-                </header>
-                <sheet>
-                    <div class="alert alert-info" role="alert">
-                        Complete los parámetros de esta línea. Al terminar use
-                        <strong>Guardar y volver a Iniciar turno</strong> para continuar
-                        con las demás líneas seleccionadas.
-                    </div>
-                    <div class="oe_title">
-                        <label for="workcenter_id"/>
-                        <h1>
-                            <field name="workcenter_id"
-                                   readonly="1"
-                                   options="{'no_create': True, 'no_open': True}"/>
-                        </h1>
-                    </div>
-                    <group>
-                        <group>
-                            <field name="line_report_target_grammage"/>
-                            <field name="line_report_suction"/>
-                            <field name="line_report_range_hood"/>
-                            <field name="line_report_winder_speed"/>
-                            <field name="line_report_spinning_box"/>
-                            <label for="line_report_upper_calender" string="Calandras superior / inferior"/>
-                            <div class="o_row">
-                                <field name="line_report_upper_calender" nolabel="1" placeholder="Superior"/>
-                                <span class="mx-2">/</span>
-                                <field name="line_report_lower_calender" nolabel="1" placeholder="Inferior"/>
-                            </div>
-                            <label for="line_report_additive" string="Aditivo / código"/>
-                            <div class="o_row">
-                                <field name="line_report_additive" nolabel="1" placeholder="Aditivo"/>
-                                <span class="mx-2">/</span>
-                                <field name="line_report_additive_code" nolabel="1" placeholder="Código"/>
-                            </div>
-                        </group>
-                        <group>
-                            <field name="line_report_pump_rpm"/>
-                            <field name="line_report_cooling"/>
-                            <field name="line_report_belt_speed"/>
-                            <field name="line_report_k_constant" readonly="1"/>
-                            <field name="line_report_temperatures"/>
-                            <field name="line_report_calender_pressure"/>
-                            <field name="line_report_additive_percentage"/>
-                        </group>
-                    </group>
-                </sheet>
-            </form>
         </field>
     </record>
 </odoo>

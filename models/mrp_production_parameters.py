@@ -126,7 +126,7 @@ class MrpProduction(models.Model):
             "view_id": self.env.ref(
                 "custom_novici.view_workcenter_selector_wizard_form_con_turno"
             ).id,
-            "target": "new",
+            "target": "current",
             "context": {
                 **self.env.context,
                 "default_production_id": self.id,
