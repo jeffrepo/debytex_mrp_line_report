@@ -172,7 +172,14 @@ class WorkcenterSelectorWizard(models.TransientModel):
             for line in self.line_parameter_ids
         }
         self.production_id._line_report_start_workcenter_shifts(parameter_values)
-        return {"type": "ir.actions.client", "tag": "reload"}
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.production_id.display_name,
+            "res_model": "mrp.production",
+            "res_id": self.production_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
 
 class WorkcenterSelectorParameterLine(models.TransientModel):
@@ -244,4 +251,43 @@ class WorkcenterSelectorParameterLine(models.TransientModel):
         return {
             history_field: getattr(self, production_field)
             for production_field, history_field in LINE_REPORT_PARAMETER_FIELD_MAP.items()
+        }
+
+    def action_open_parameter_form(self):
+        """Open the line in a full-page form instead of nesting two dialogs."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Parámetros de %s") % self.workcenter_id.display_name,
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "debytex_mrp_line_report."
+                "view_workcenter_selector_parameter_line_form"
+            ).id,
+            "target": "current",
+        }
+
+    def action_save_and_return(self):
+        """Return to the persisted parent wizard after the form is saved."""
+        self.ensure_one()
+        wizard = self.wizard_id.exists()
+        if not wizard:
+            raise UserError(
+                _(
+                    "El asistente de inicio de turno ya expiró. Abra nuevamente "
+                    "'Iniciar turno' desde la orden de fabricación."
+                )
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Iniciar turno"),
+            "res_model": "workcenter.selector.wizard",
+            "res_id": wizard.id,
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "custom_novici.view_workcenter_selector_wizard_form_con_turno"
+            ).id,
+            "target": "new",
         }
