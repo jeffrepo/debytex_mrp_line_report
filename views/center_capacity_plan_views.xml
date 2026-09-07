@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_center_capacity_plan_search" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.plan.search</field>
+        <field name="model">debytex.mrp.center.capacity.plan</field>
+        <field name="arch" type="xml">
+            <search string="Buscar simulaciones de capacidad">
+                <field name="name"/>
+                <field name="workcenter_id"/>
+                <field name="responsible_id"/>
+                <field name="planned_date"/>
+                <separator/>
+                <filter name="group_workcenter" string="Centro de trabajo" context="{'group_by': 'workcenter_id'}"/>
+                <filter name="group_date" string="Fecha" context="{'group_by': 'planned_date'}"/>
+                <filter name="group_company" string="Compañía" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_mrp_center_capacity_plan_list" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.plan.list</field>
+        <field name="model">debytex.mrp.center.capacity.plan</field>
+        <field name="arch" type="xml">
+            <list string="Capacidad por centro" default_order="planned_date desc, id desc"
+                  decoration-danger="over_capacity">
+                <field name="name"/>
+                <field name="planned_date"/>
+                <field name="workcenter_id"/>
+                <field name="useful_width_cm"/>
+                <field name="occupied_width_cm"/>
+                <field name="free_width_cm"/>
+                <field name="utilization_percentage"/>
+                <field name="capacity_state" widget="badge"
+                       decoration-muted="capacity_state == 'empty'"
+                       decoration-success="capacity_state == 'available'"
+                       decoration-info="capacity_state == 'full'"
+                       decoration-danger="capacity_state == 'over'"/>
+                <field name="responsible_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="over_capacity" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mrp_center_capacity_plan_line_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.plan.line.form</field>
+        <field name="model">debytex.mrp.center.capacity.plan.line</field>
+        <field name="arch" type="xml">
+            <form string="Orden incluida en la simulación">
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="production_id"/>
+                        <h1>
+                            <field name="production_id" options="{'no_create': True}"/>
+                        </h1>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        Esta asignación es informativa. No modifica la orden de fabricación
+                        ni reserva capacidad en el centro de trabajo.
+                    </div>
+                    <group>
+                        <group string="Orden">
+                            <field name="plan_id" readonly="1"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="remaining_rolls" readonly="1"/>
+                            <field name="allocation_percentage"/>
+                            <field name="allocated_rolls" readonly="1"/>
+                        </group>
+                        <group string="Uso del ancho">
+                            <field name="width_cm"/>
+                            <field name="lanes"/>
+                            <field name="occupied_width_cm" readonly="1"/>
+                            <field name="maximum_lanes" readonly="1"/>
+                            <field name="fits_alone" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mrp_center_capacity_plan_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.plan.form</field>
+        <field name="model">debytex.mrp.center.capacity.plan</field>
+        <field name="arch" type="xml">
+            <form string="Simulación de capacidad por centro">
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Vista preliminar por ancho.</strong>
+                        Permite probar combinaciones de órdenes dentro del ancho útil del
+                        centro. Por ahora no valida compatibilidad de productos, tiempo,
+                        materiales o secuencia, y no inicia ni reserva producción.
+                    </div>
+
+                    <group>
+                        <group string="Centro y fecha">
+                            <field name="workcenter_id" options="{'no_create': True}"/>
+                            <field name="planned_date"/>
+                        </group>
+                        <group string="Responsable">
+                            <field name="responsible_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="capacity_state" widget="badge" readonly="1"
+                                   decoration-muted="capacity_state == 'empty'"
+                                   decoration-success="capacity_state == 'available'"
+                                   decoration-info="capacity_state == 'full'"
+                                   decoration-danger="capacity_state == 'over'"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-warning" role="alert" invisible="not workcenter_id or useful_width_cm &gt; 0">
+                        El centro seleccionado no tiene ancho configurado. Revise el ancho
+                        del eje en la configuración del centro de trabajo.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="not over_capacity">
+                        La combinación excede el ancho útil por
+                        <field name="excess_width_cm" class="oe_inline" readonly="1"/> cm.
+                        Ajuste el número de bandas o quite una orden antes de utilizar esta propuesta.
+                    </div>
+
+                    <group string="Resumen de capacidad" col="6">
+                        <field name="total_width_cm" readonly="1"/>
+                        <field name="fixed_trim_width_cm" readonly="1"/>
+                        <field name="useful_width_cm" readonly="1"/>
+                        <field name="occupied_width_cm" readonly="1"/>
+                        <field name="free_width_cm" readonly="1"/>
+                        <field name="utilization_percentage" widget="progressbar" readonly="1"/>
+                    </group>
+
+                    <separator string="Distribución visual del eje"/>
+                    <field name="capacity_preview_html" widget="html" nolabel="1" readonly="1"/>
+
+                    <separator string="Órdenes propuestas"/>
+                    <field name="line_ids"
+                           nolabel="1"
+                           context="{'form_view_ref': 'debytex_mrp_line_report.view_mrp_center_capacity_plan_line_form'}">
+                        <list editable="bottom" open_form_view="1"
+                              decoration-danger="not fits_alone">
+                            <field name="sequence" widget="handle"/>
+                            <field name="company_id" column_invisible="True"/>
+                            <field name="production_id" options="{'no_create': True}"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="width_cm"/>
+                            <field name="lanes"/>
+                            <field name="occupied_width_cm" readonly="1" sum="Total ocupado"/>
+                            <field name="remaining_rolls" readonly="1" optional="show"/>
+                            <field name="allocation_percentage" optional="show"/>
+                            <field name="allocated_rolls" readonly="1" optional="show"/>
+                            <field name="maximum_lanes" readonly="1" optional="hide"/>
+                            <field name="fits_alone" widget="boolean_toggle" readonly="1" optional="hide"/>
+                        </list>
+                    </field>
+
+                    <group string="Observaciones">
+                        <field name="notes" nolabel="1"
+                               placeholder="Anote las condiciones o decisiones que el cliente debe revisar..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mrp_center_capacity_plan" model="ir.actions.act_window">
+        <field name="name">Capacidad por centro</field>
+        <field name="res_model">debytex.mrp.center.capacity.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mrp_center_capacity_plan_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Pruebe cuánto producto cabe por ancho.</p>
+            <p>
+                Seleccione un centro de trabajo y agregue órdenes de fabricación
+                para comparar el ancho ocupado con el ancho útil disponible.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mrp_center_capacity_plan"
+              name="Capacidad por centro"
+              parent="mrp.mrp_planning_menu_root"
+              action="action_mrp_center_capacity_plan"
+              sequence="95"
+              groups="mrp.group_mrp_user"/>
+</odoo>
