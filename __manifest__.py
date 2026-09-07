@@ -1,6 +1,6 @@
 {
     "name": "Debytex - Reporte de Producción por Línea",
-    "version": "18.0.1.6.3",
+    "version": "18.0.1.7.0",
     "category": "Manufacturing/Reporting",
     "summary": "Reporte técnico y general de producción por línea",
     "description": """
@@ -24,6 +24,7 @@
         "data/ir_sequence_data.xml",
         "views/mrp_production_parameter_views.xml",
         "views/production_line_report_views.xml",
+        "views/center_capacity_plan_views.xml",
         "wizard/workcenter_selector_wizard_views.xml",
         "wizard/production_line_report_wizard_views.xml",
         "report/production_line_report_actions.xml",

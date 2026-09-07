@@ -44,6 +44,16 @@ las líneas de producción de Debytex/ECOWOOL.
 - El turno mantiene un cronómetro de tiempo efectivo en vivo. Las pausas
   detienen el conteo, conservan motivo y duración, la reanudación continúa
   desde el acumulado y el cierre fija la duración definitiva.
+- **Fabricación > Planeación > Capacidad por centro** ofrece una simulación
+  preliminar para combinar varias órdenes en un mismo centro según su ancho.
+  La pantalla muestra el ancho total, refile, ancho útil, espacio ocupado,
+  espacio libre, porcentaje de aprovechamiento y una distribución visual.
+- En cada orden propuesta se puede indicar el número de bandas y el porcentaje
+  de rollos pendientes que se desea considerar. El ancho se obtiene del
+  producto y puede corregirse solamente para la simulación.
+- Esta primera versión es informativa: todavía no recomienda órdenes, valida
+  compatibilidad, calcula tiempos o materiales, reserva capacidad, divide
+  órdenes ni inicia turnos.
 
 ## Regla de cálculo
 
