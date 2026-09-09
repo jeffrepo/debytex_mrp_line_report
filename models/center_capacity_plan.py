@@ -238,7 +238,7 @@ class MrpCenterCapacityPlan(models.Model):
                 plan.allowed_production_ids = False
                 continue
             domain = [
-                ("state", "=", "confirmed"),
+                ("state", "in", ("confirmed", "progress")),
                 ("company_id", "=", plan.company_id.id),
                 ("fecha_inicio_turno", "=", False),
             ]
@@ -549,7 +549,7 @@ class MrpCenterCapacityPlanLine(models.Model):
         required=True,
         domain=(
             "[('id', 'in', allowed_production_ids), "
-            "('state', '=', 'confirmed'), "
+            "('state', 'in', ['confirmed', 'progress']), "
             "('company_id', '=', company_id)]"
         ),
         check_company=True,
@@ -950,10 +950,11 @@ class MrpCenterCapacityPlanLine(models.Model):
                 )
                 % {"order": production.display_name}
             )
-        if production.state != "confirmed":
+        if production.state not in ("confirmed", "progress"):
             raise UserError(
                 _(
-                    "La orden %(order)s debe estar confirmada y sin iniciar. "
+                    "La orden %(order)s debe estar confirmada o en progreso, "
+                    "sin otro turno activo. "
                     "Estado actual: %(state)s."
                 )
                 % {

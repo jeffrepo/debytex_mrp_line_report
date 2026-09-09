@@ -53,7 +53,8 @@ las líneas de producción de Debytex/ECOWOOL.
   producto y puede corregirse solamente para la propuesta.
 - La propuesta exige seleccionar valores comunes para **Peso**, **Color** y
   **Metros por rollo**. El selector de órdenes muestra únicamente variantes
-  confirmadas que coinciden con los tres valores.
+  confirmadas o en progreso, sin turno activo, que coinciden con los tres
+  valores.
 - La pantalla todavía no recomienda órdenes ni calcula tiempos.
 - Cada propuesta utiliza una secuencia interna `CAP/AÑO/00000`. En sus líneas
   se indica la cantidad exacta que se procesará y se capturan los parámetros
