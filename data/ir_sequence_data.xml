@@ -7,4 +7,12 @@
         <field name="padding">5</field>
         <field name="company_id" eval="False"/>
     </record>
+
+    <record id="sequence_mrp_center_capacity_plan" model="ir.sequence">
+        <field name="name">Propuesta de Capacidad por Centro</field>
+        <field name="code">debytex.mrp.center.capacity.plan</field>
+        <field name="prefix">CAP/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
 </odoo>

@@ -43,3 +43,31 @@ def maximum_lanes(*, useful_width_cm, product_width_cm):
     useful_width = _non_negative(useful_width_cm)
     product_width = _non_negative(product_width_cm)
     return int(math.floor(useful_width / product_width)) if product_width else 0
+
+
+def compute_quantity_allocation(
+    *,
+    available_quantity,
+    quantity_to_process=0.0,
+    allocation_percentage=100.0,
+):
+    """Return a transparent quantity split for one manufacturing order.
+
+    ``quantity_to_process`` is authoritative when it is greater than zero.
+    The percentage remains as a convenient fallback for simulations created
+    before the executable quantity field existed.
+    """
+    available = _non_negative(available_quantity)
+    requested = _non_negative(quantity_to_process)
+    if not requested:
+        percentage = _non_negative(allocation_percentage)
+        requested = available * percentage / 100.0
+    percentage = requested / available * 100.0 if available else 0.0
+    return {
+        "available_quantity": available,
+        "quantity_to_process": requested,
+        "remaining_quantity": max(available - requested, 0.0),
+        "allocation_percentage": percentage,
+        "is_partial": 0.0 < requested < available,
+        "overallocated": requested > available,
+    }
