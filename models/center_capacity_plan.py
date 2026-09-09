@@ -254,6 +254,25 @@ class MrpCenterCapacityPlan(models.Model):
             plan.allowed_production_ids = self.env["mrp.production"].search(domain)
 
     def action_start_shifts(self):
+        """Open one operation-parameter block for every proposed order."""
+        self.ensure_one()
+        self._validate_capacity_start()
+        wizard = self.env[
+            "debytex.mrp.center.capacity.start.wizard"
+        ].create_from_plan(self)
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Iniciar turno - %s") % self.display_name,
+            "res_model": "debytex.mrp.center.capacity.start.wizard",
+            "res_id": wizard.id,
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "debytex_mrp_line_report.view_mrp_center_capacity_start_wizard_form"
+            ).id,
+            "target": "new",
+        }
+
+    def _execute_start_shifts(self):
         """Split partial quantities and start every proposed MO atomically."""
         self.ensure_one()
         self._validate_capacity_start()
