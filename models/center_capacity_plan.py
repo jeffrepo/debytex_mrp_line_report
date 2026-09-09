@@ -1245,6 +1245,22 @@ class MrpCenterCapacityPlanAttribute(models.Model):
         )
     ]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        xmlids_by_key = {
+            key: xmlid for key, _label, xmlid in REQUIRED_ATTRIBUTE_FILTERS
+        }
+        for values in vals_list:
+            if values.get("attribute_id") or not values.get("attribute_key"):
+                continue
+            xmlid = xmlids_by_key.get(values["attribute_key"])
+            attribute = (
+                self.env.ref(xmlid, raise_if_not_found=False) if xmlid else False
+            )
+            if attribute:
+                values["attribute_id"] = attribute.id
+        return super().create(vals_list)
+
     @api.constrains("attribute_id", "value_id")
     def _check_attribute_value(self):
         for item in self:
