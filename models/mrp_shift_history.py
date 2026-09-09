@@ -386,6 +386,11 @@ class MrpProduction(models.Model):
             self.sudo().line_report_active_shift_id = False
         return result
 
+    def _apply_consumo_real_to_moves(self):
+        if self.env.context.get("line_report_skip_material_application"):
+            return None
+        return super()._apply_consumo_real_to_moves()
+
     def action_reanudar_workorder_activa(self):
         super().action_reanudar_workorder_activa()
         return {"type": "ir.actions.client", "tag": "reload"}
@@ -397,7 +402,8 @@ class MrpProduction(models.Model):
         primary = self.workcenter_id or workcenters[:1]
 
         # Keep the original implementation responsible for the production-wide
-        # start date, serial number, consumption and primary work order.
+        # start date, serial number and primary work order. Capacity proposals
+        # may explicitly skip applying material quantities at this point.
         self.with_context(line_report_skip_history=True).action_iniciar_turno()
 
         active_workorders = self.workorder_ids.filtered(

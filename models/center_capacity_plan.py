@@ -3,13 +3,14 @@ import unicodedata
 
 from markupsafe import escape
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_round
 
 from ..services.capacity import (
     compute_quantity_allocation,
     compute_width_capacity,
+    has_required_attribute_values,
     maximum_lanes,
 )
 from .mrp_production_parameters import LINE_REPORT_PARAMETER_FIELD_MAP
@@ -27,6 +28,20 @@ CAPACITY_COLORS = (
 PLAN_STATES = [
     ("draft", "Borrador"),
     ("started", "Turno iniciado"),
+    ("closed", "Turno finalizado"),
+]
+
+REQUIRED_ATTRIBUTE_FILTERS = (
+    ("weight", "Peso", "custom_novici.product_attribute_weight"),
+    ("color", "Color", "custom_novici.product_attribute_color"),
+    (
+        "meters_per_roll",
+        "Metros por rollo",
+        "custom_novici.product_attribute_metros_x_rollo",
+    ),
+)
+ATTRIBUTE_FILTER_SELECTION = [
+    (key, label) for key, label, _xmlid in REQUIRED_ATTRIBUTE_FILTERS
 ]
 
 
@@ -86,12 +101,34 @@ class MrpCenterCapacityPlan(models.Model):
         string="Órdenes consideradas",
         copy=True,
     )
+    attribute_filter_ids = fields.One2many(
+        "debytex.mrp.center.capacity.plan.attribute",
+        "plan_id",
+        string="Atributos de fabricación",
+        copy=True,
+        default=lambda self: self._capacity_default_attribute_filters(),
+    )
+    filters_complete = fields.Boolean(
+        string="Atributos completos",
+        compute="_compute_allowed_productions",
+    )
+    allowed_production_ids = fields.Many2many(
+        "mrp.production",
+        string="Órdenes compatibles",
+        compute="_compute_allowed_productions",
+    )
     notes = fields.Text(string="Observaciones")
     started_at = fields.Datetime(
         string="Turno iniciado el", readonly=True, copy=False
     )
     started_by_id = fields.Many2one(
         "res.users", string="Turno iniciado por", readonly=True, copy=False
+    )
+    closed_at = fields.Datetime(
+        string="Turno finalizado el", readonly=True, copy=False
+    )
+    closed_by_id = fields.Many2one(
+        "res.users", string="Turno finalizado por", readonly=True, copy=False
     )
 
     total_width_cm = fields.Float(
@@ -141,7 +178,80 @@ class MrpCenterCapacityPlan(models.Model):
                 values["name"] = self.env["ir.sequence"].next_by_code(
                     "debytex.mrp.center.capacity.plan"
                 ) or _("Nueva propuesta")
-        return super().create(vals_list)
+        plans = super().create(vals_list)
+        plans._ensure_required_attribute_filters()
+        return plans
+
+    @api.model
+    def _capacity_default_attribute_filters(self):
+        commands = []
+        for key, _label, xmlid in REQUIRED_ATTRIBUTE_FILTERS:
+            attribute = self.env.ref(xmlid, raise_if_not_found=False)
+            if attribute:
+                commands.append(
+                    Command.create(
+                        {
+                            "attribute_key": key,
+                            "attribute_id": attribute.id,
+                        }
+                    )
+                )
+        return commands
+
+    def _ensure_required_attribute_filters(self):
+        for plan in self:
+            existing_keys = set(plan.attribute_filter_ids.mapped("attribute_key"))
+            commands = []
+            for key, _label, xmlid in REQUIRED_ATTRIBUTE_FILTERS:
+                if key in existing_keys:
+                    continue
+                attribute = self.env.ref(xmlid, raise_if_not_found=False)
+                if attribute:
+                    commands.append(
+                        Command.create(
+                            {
+                                "attribute_key": key,
+                                "attribute_id": attribute.id,
+                            }
+                        )
+                    )
+            if commands:
+                plan.write({"attribute_filter_ids": commands})
+
+    @api.depends(
+        "attribute_filter_ids.attribute_key",
+        "attribute_filter_ids.attribute_id",
+        "attribute_filter_ids.value_id",
+        "company_id",
+    )
+    def _compute_allowed_productions(self):
+        required_keys = {
+            key for key, _label, _xmlid in REQUIRED_ATTRIBUTE_FILTERS
+        }
+        for plan in self:
+            selected = plan.attribute_filter_ids.filtered(
+                lambda item: item.attribute_key in required_keys and item.value_id
+            )
+            selected_keys = set(selected.mapped("attribute_key"))
+            plan.filters_complete = selected_keys == required_keys
+            if not plan.filters_complete:
+                plan.allowed_production_ids = False
+                continue
+            domain = [
+                ("state", "=", "confirmed"),
+                ("company_id", "=", plan.company_id.id),
+                ("fecha_inicio_turno", "=", False),
+            ]
+            for value in selected.mapped("value_id"):
+                domain.append(
+                    (
+                        "product_id.product_template_attribute_value_ids."
+                        "product_attribute_value_id",
+                        "=",
+                        value.id,
+                    )
+                )
+            plan.allowed_production_ids = self.env["mrp.production"].search(domain)
 
     def action_start_shifts(self):
         """Split partial quantities and start every proposed MO atomically."""
@@ -168,13 +278,53 @@ class MrpCenterCapacityPlan(models.Model):
             "target": "current",
         }
 
+    def action_finish_shifts(self):
+        """Close every order started by this capacity proposal atomically."""
+        self.ensure_one()
+        if self.state != "started":
+            raise UserError(_("Esta propuesta no tiene un turno activo."))
+
+        for line in self.line_ids.sorted(key=lambda item: (item.sequence, item.id)):
+            production = line.execution_production_id
+            if not production:
+                raise UserError(
+                    _("La línea de %s no tiene una orden iniciada.")
+                    % line.production_id.display_name
+                )
+            if production.fecha_inicio_turno:
+                production.action_cerrar_turno()
+
+        self.write(
+            {
+                "state": "closed",
+                "closed_at": fields.Datetime.now(),
+                "closed_by_id": self.env.user.id,
+            }
+        )
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.display_name,
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
     def _validate_capacity_start(self):
         self.ensure_one()
         if self.state != "draft":
             raise UserError(_("El turno de esta propuesta ya fue iniciado."))
+        self._ensure_required_attribute_filters()
         if not self.line_ids:
             raise UserError(
                 _("Agregue al menos una orden de fabricación antes de iniciar.")
+            )
+        if not self.filters_complete:
+            raise UserError(
+                _(
+                    "Seleccione un valor para Peso, Color y Metros por rollo "
+                    "antes de iniciar el turno."
+                )
             )
         if self.useful_width_cm <= 0:
             raise UserError(
@@ -369,12 +519,18 @@ class MrpCenterCapacityPlanLine(models.Model):
     plan_state = fields.Selection(
         related="plan_id.state", string="Estado de la propuesta", readonly=True
     )
+    allowed_production_ids = fields.Many2many(
+        "mrp.production",
+        string="Órdenes compatibles",
+        compute="_compute_allowed_productions",
+    )
     production_id = fields.Many2one(
         "mrp.production",
         string="Orden de fabricación",
         required=True,
         domain=(
-            "[('state', '=', 'confirmed'), "
+            "[('id', 'in', allowed_production_ids), "
+            "('state', '=', 'confirmed'), "
             "('company_id', '=', company_id)]"
         ),
         check_company=True,
@@ -459,7 +615,18 @@ class MrpCenterCapacityPlanLine(models.Model):
         copy=False,
         ondelete="set null",
     )
-
+    attributes_match = fields.Boolean(
+        string="Atributos compatibles",
+        compute="_compute_shift_actions",
+    )
+    can_operate_shift = fields.Boolean(
+        string="Puede operar el turno",
+        compute="_compute_shift_actions",
+    )
+    can_relabel_roll = fields.Boolean(
+        string="Puede reetiquetar",
+        compute="_compute_shift_actions",
+    )
     line_report_target_grammage = fields.Float(
         string="Gramaje objetivo (g/m²)"
     )
@@ -530,6 +697,88 @@ class MrpCenterCapacityPlanLine(models.Model):
             for field_name, value in parameter_defaults.items():
                 values.setdefault(field_name, value)
         return super().create(vals_list)
+
+    @api.depends("plan_id.allowed_production_ids")
+    def _compute_allowed_productions(self):
+        for line in self:
+            line.allowed_production_ids = line.plan_id.allowed_production_ids
+
+    @api.depends(
+        "plan_state",
+        "plan_id.attribute_filter_ids.value_id",
+        "production_id.product_id.product_template_attribute_value_ids."
+        "product_attribute_value_id",
+        "execution_production_id.fecha_inicio_turno",
+        "execution_production_id.state",
+        "execution_production_id.rollo_ids.active",
+        "execution_production_id.rollo_ids.etiquetado",
+    )
+    def _compute_shift_actions(self):
+        for line in self:
+            line.attributes_match = line._matches_required_attributes()
+            production = line.execution_production_id
+            line.can_operate_shift = bool(
+                line.plan_state == "started"
+                and production
+                and production.fecha_inicio_turno
+                and production.state not in ("done", "cancel")
+            )
+            line.can_relabel_roll = bool(
+                line.plan_state == "closed"
+                and production
+                and not production.fecha_inicio_turno
+                and production.rollo_ids.filtered(
+                    lambda roll: roll.active and roll.etiquetado
+                )
+            )
+
+    def _matches_required_attributes(self):
+        self.ensure_one()
+        filters = self.plan_id.attribute_filter_ids.filtered("value_id")
+        if not self.plan_id.filters_complete:
+            return False
+        required_value_ids = filters.mapped("value_id").ids
+        variant_values = (
+            self.production_id.product_id.product_template_attribute_value_ids
+        )
+        product_value_ids = variant_values.mapped("product_attribute_value_id").ids
+        return has_required_attribute_values(
+            product_value_ids, required_value_ids
+        )
+
+    def action_register_roll(self):
+        self.ensure_one()
+        if not self.can_operate_shift:
+            raise UserError(
+                _("Sólo puede registrar rollos mientras el turno está activo.")
+            )
+        return self.execution_production_id.action_open_registro_rollo()
+
+    def action_consume_materials(self):
+        self.ensure_one()
+        if not self.can_operate_shift:
+            raise UserError(
+                _("Sólo puede consumir materiales mientras el turno está activo.")
+            )
+        return self.execution_production_id.action_open_consumo_real()
+
+    def action_relabel_roll(self):
+        self.ensure_one()
+        if not self.can_relabel_roll:
+            raise UserError(
+                _(
+                    "Sólo puede reetiquetar rollos ya etiquetados después de "
+                    "finalizar el turno."
+                )
+            )
+        action = self.env.ref(
+            "custom_novici.action_reimpresion_etiqueta_wizard"
+        ).sudo().read()[0]
+        action["context"] = {
+            **self.env.context,
+            "default_production_id": self.execution_production_id.id,
+        }
+        return action
 
     @api.depends(
         "production_id",
@@ -674,6 +923,14 @@ class MrpCenterCapacityPlanLine(models.Model):
     def _validate_capacity_execution(self):
         self.ensure_one()
         production = self.production_id
+        if not self._matches_required_attributes():
+            raise UserError(
+                _(
+                    "La orden %(order)s no tiene el mismo Peso, Color y "
+                    "Metros por rollo seleccionados en la propuesta."
+                )
+                % {"order": production.display_name}
+            )
         if production.state != "confirmed":
             raise UserError(
                 _(
@@ -719,17 +976,6 @@ class MrpCenterCapacityPlanLine(models.Model):
                     "available": available,
                     "uom": production.product_uom_id.display_name,
                 }
-            )
-        active_components = production.move_raw_ids.filtered(
-            lambda move: move.state not in ("done", "cancel")
-            and move.product_uom_qty > 0
-        )
-        if not active_components:
-            raise UserError(
-                _(
-                    "La orden %s no tiene componentes pendientes para consumir."
-                )
-                % production.display_name
             )
 
     def _prepare_capacity_execution(self):
@@ -786,28 +1032,14 @@ class MrpCenterCapacityPlanLine(models.Model):
                 "workcenter_id": workcenter.id,
             }
         )
-        production.action_assign()
-        active_components = self._capacity_check_component_availability(
-            production
-        )
-        for move in active_components:
-            move.sudo().write(
-                {
-                    "consumo_real": move.product_uom_qty,
-                    "quantity": move.product_uom_qty,
-                    "picked": True,
-                }
-            )
-
-        shifts = production._line_report_start_workcenter_shifts(
+        shifts = production.with_context(
+            line_report_skip_material_application=True
+        )._line_report_start_workcenter_shifts(
             {workcenter.id: self._capacity_history_parameter_values()}
         )
         shift = shifts.filtered(
             lambda item: item.workcenter_id == workcenter
         )[:1]
-        self._capacity_register_component_consumption(
-            production, active_components
-        )
         self.write(
             {
                 "execution_production_id": production.id,
@@ -831,64 +1063,10 @@ class MrpCenterCapacityPlanLine(models.Model):
                 message_type="notification",
             )
 
-    def _capacity_check_component_availability(self, production):
-        self.ensure_one()
-        components = production.move_raw_ids.filtered(
-            lambda move: move.state not in ("done", "cancel")
-            and move.product_uom_qty > 0
-        )
-        shortages = []
-        for move in components:
-            if not move.product_id.is_storable or move._should_bypass_reservation():
-                continue
-            rounding = move.product_uom.rounding or 0.01
-            if float_compare(
-                move.quantity,
-                move.product_uom_qty,
-                precision_rounding=rounding,
-            ) < 0:
-                shortages.append(
-                    _("%(product)s: requiere %(required)s, reservado %(reserved)s")
-                    % {
-                        "product": move.product_id.display_name,
-                        "required": move.product_uom_qty,
-                        "reserved": move.quantity,
-                    }
-                )
-        if shortages:
-            raise UserError(
-                _(
-                    "No hay componentes suficientes para iniciar %(order)s:\n\n%(detail)s"
-                )
-                % {
-                    "order": production.display_name,
-                    "detail": "\n".join(shortages),
-                }
-            )
-        return components
-
-    def _capacity_register_component_consumption(self, production, moves):
-        consumed_at = fields.Datetime.now()
-        values = [
-            {
-                "production_id": production.id,
-                "move_id": move.id,
-                "product_id": move.product_id.id,
-                "cantidad_consumida": move.product_uom_qty,
-                "user_id": self.env.user.id,
-                "fecha_consumo": consumed_at,
-            }
-            for move in moves
-            if move.product_uom_qty > 0
-        ]
-        for item in values:
-            self.env["consumo.material.turno"].sudo().create(item)
-
     def _capacity_component_snapshots(self, production):
         snapshots = []
         for move in production.move_raw_ids.filtered(
             lambda item: item.state not in ("done", "cancel")
-            and item.product_uom_qty > 0
         ):
             values = move.copy_data(
                 default=move._get_backorder_move_vals()
@@ -941,15 +1119,6 @@ class MrpCenterCapacityPlanLine(models.Model):
             moves |= self.env["stock.move"].create(values)
         moves._action_confirm(merge=False)
         moves._adjust_procure_method()
-        to_assign = moves.filtered(
-            lambda move: move._should_bypass_reservation()
-            or move.picking_type_id.reservation_method == "at_confirm"
-            or (
-                move.reservation_date
-                and move.reservation_date <= fields.Date.today()
-            )
-        )
-        to_assign._action_assign()
 
     def _capacity_processing_quantity(self, available):
         self.ensure_one()
@@ -1034,3 +1203,69 @@ class MrpCenterCapacityPlanLine(models.Model):
     def _capacity_to_number(value):
         match = re.search(r"-?\d+(?:[.,]\d+)?", str(value or ""))
         return float(match.group(0).replace(",", ".")) if match else 0.0
+
+
+class MrpCenterCapacityPlanAttribute(models.Model):
+    _name = "debytex.mrp.center.capacity.plan.attribute"
+    _description = "Atributo requerido en propuesta de capacidad"
+    _order = "id"
+
+    plan_id = fields.Many2one(
+        "debytex.mrp.center.capacity.plan",
+        string="Propuesta",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
+    attribute_key = fields.Selection(
+        ATTRIBUTE_FILTER_SELECTION,
+        string="Parámetro",
+        required=True,
+        readonly=True,
+    )
+    attribute_id = fields.Many2one(
+        "product.attribute",
+        string="Atributo",
+        required=True,
+        readonly=True,
+        ondelete="restrict",
+    )
+    value_id = fields.Many2one(
+        "product.attribute.value",
+        string="Valor requerido",
+        domain="[('attribute_id', '=', attribute_id)]",
+        ondelete="restrict",
+    )
+
+    _sql_constraints = [
+        (
+            "attribute_key_unique_per_capacity_plan",
+            "unique(plan_id, attribute_key)",
+            "Cada atributo sólo puede aparecer una vez por propuesta.",
+        )
+    ]
+
+    @api.constrains("attribute_id", "value_id")
+    def _check_attribute_value(self):
+        for item in self:
+            if item.value_id and item.value_id.attribute_id != item.attribute_id:
+                raise ValidationError(
+                    _("El valor seleccionado no pertenece al atributo indicado.")
+                )
+
+    @api.constrains("attribute_key", "attribute_id")
+    def _check_required_attribute(self):
+        xmlids_by_key = {
+            key: xmlid for key, _label, xmlid in REQUIRED_ATTRIBUTE_FILTERS
+        }
+        for item in self:
+            xmlid = xmlids_by_key.get(item.attribute_key)
+            if not xmlid:
+                raise ValidationError(_("El parámetro de atributo no es válido."))
+            expected = self.env.ref(
+                xmlid, raise_if_not_found=False
+            )
+            if expected and item.attribute_id != expected:
+                raise ValidationError(
+                    _("El atributo de este parámetro obligatorio no puede cambiarse.")
+                )
