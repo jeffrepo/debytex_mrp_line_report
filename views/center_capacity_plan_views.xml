@@ -28,7 +28,8 @@
                 <field name="workcenter_id"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
-                       decoration-success="state == 'started'"/>
+                       decoration-success="state == 'started'"
+                       decoration-muted="state == 'closed'"/>
                 <field name="useful_width_cm"/>
                 <field name="occupied_width_cm"/>
                 <field name="free_width_cm"/>
@@ -57,8 +58,14 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"
-                            confirm="Se validarán existencias, se crearán las órdenes parciales necesarias y se iniciará un turno para cada orden. ¿Desea continuar?"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,started"/>
+                            confirm="Se crearán las órdenes parciales necesarias y se iniciará el cronómetro de cada orden. Los materiales no se consumirán en este paso. ¿Desea continuar?"/>
+                    <button name="action_finish_shifts"
+                            string="Finalizar turno"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'started'"
+                            confirm="Se finalizará el turno de todas las órdenes incluidas. ¿Desea continuar?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,started,closed"/>
                 </header>
                 <sheet>
                     <field name="company_id" invisible="1"/>
@@ -69,15 +76,23 @@
 
                     <div class="alert alert-info" role="alert" invisible="state != 'draft'">
                         <strong>Propuesta de fabricación conjunta.</strong>
-                        Complete la cantidad y los parámetros de cada orden. Al iniciar,
-                        Odoo reservará y registrará sus componentes, creará las órdenes
-                        remanentes necesarias e iniciará todos los turnos en este centro.
+                        Seleccione Peso, Color y Metros por rollo. Después complete
+                        la cantidad y los parámetros de cada orden compatible. Al iniciar,
+                        Odoo creará los remanentes necesarios y arrancará los cronómetros;
+                        los materiales se registrarán posteriormente desde cada orden.
                     </div>
                     <div class="alert alert-success" role="alert" invisible="state != 'started'">
                         Los turnos fueron iniciados correctamente el
                         <field name="started_at" class="oe_inline" readonly="1"/>
                         por <field name="started_by_id" class="oe_inline" readonly="1"/>.
-                        Las órdenes iniciadas y sus remanentes pueden consultarse en cada fila.
+                        Use los botones de cada fila para registrar rollos o consumir materiales.
+                    </div>
+                    <div class="alert alert-secondary" role="alert" invisible="state != 'closed'">
+                        Los turnos fueron finalizados el
+                        <field name="closed_at" class="oe_inline" readonly="1"/>
+                        por <field name="closed_by_id" class="oe_inline" readonly="1"/>.
+                        Ya no se pueden registrar rollos ni materiales. Las etiquetas
+                        existentes pueden reimprimirse con autorización y PIN de supervisor.
                     </div>
 
                     <group>
@@ -101,6 +116,26 @@
                                    decoration-danger="capacity_state == 'over'"/>
                         </group>
                     </group>
+
+                    <separator string="Atributos comunes obligatorios"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or filters_complete">
+                        Seleccione un valor para los tres atributos. Hasta entonces no
+                        habrá órdenes disponibles para agregar.
+                    </div>
+                    <field name="filters_complete" invisible="1"/>
+                    <field name="allowed_production_ids" invisible="1"/>
+                    <field name="attribute_filter_ids"
+                           nolabel="1"
+                           readonly="state != 'draft'">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="attribute_key" column_invisible="True"/>
+                            <field name="attribute_id" readonly="1"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="value_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </list>
+                    </field>
 
                     <div class="alert alert-warning" role="alert" invisible="not workcenter_id or useful_width_cm &gt; 0">
                         El centro seleccionado no tiene ancho configurado. Revise el ancho
@@ -129,11 +164,15 @@
                            nolabel="1"
                            readonly="state != 'draft'">
                         <list editable="bottom" open_form_view="1"
-                              decoration-danger="not fits_alone">
+                              decoration-danger="not fits_alone or not attributes_match">
                             <field name="sequence" widget="handle"/>
                             <field name="company_id" column_invisible="True"/>
+                            <field name="allowed_production_ids" column_invisible="True"/>
+                            <field name="can_operate_shift" column_invisible="True"/>
+                            <field name="can_relabel_roll" column_invisible="True"/>
                             <field name="production_id" options="{'no_create': True}"/>
                             <field name="product_id" readonly="1"/>
+                            <field name="attributes_match" readonly="1" optional="hide"/>
                             <field name="product_uom_id" readonly="1" optional="hide"/>
                             <field name="width_cm"/>
                             <field name="lanes"/>
@@ -147,11 +186,34 @@
                             <field name="execution_production_id" readonly="1" optional="hide"/>
                             <field name="remainder_production_id" readonly="1" optional="hide"/>
                             <field name="shift_history_id" readonly="1" optional="hide"/>
+                            <button name="action_register_roll" type="object"
+                                    string="Registrar rollo" class="btn-primary"
+                                    invisible="not can_operate_shift"/>
+                            <button name="action_consume_materials" type="object"
+                                    string="Consumir materiales"
+                                    invisible="not can_operate_shift"/>
+                            <button name="action_relabel_roll" type="object"
+                                    string="Reetiquetar rollo"
+                                    invisible="not can_relabel_roll"/>
                         </list>
                         <form string="Orden incluida en la propuesta">
+                            <header>
+                                <button name="action_register_roll" type="object"
+                                        string="Registrar rollo" class="btn-primary"
+                                        invisible="not can_operate_shift"/>
+                                <button name="action_consume_materials" type="object"
+                                        string="Consumir materiales"
+                                        invisible="not can_operate_shift"/>
+                                <button name="action_relabel_roll" type="object"
+                                        string="Reetiquetar rollo" class="btn-primary"
+                                        invisible="not can_relabel_roll"/>
+                            </header>
                             <sheet>
                                 <field name="company_id" invisible="1"/>
                                 <field name="plan_state" invisible="1"/>
+                                <field name="allowed_production_ids" invisible="1"/>
+                                <field name="can_operate_shift" invisible="1"/>
+                                <field name="can_relabel_roll" invisible="1"/>
                                 <div class="oe_title">
                                     <label for="production_id"/>
                                     <h1>
@@ -223,7 +285,7 @@
                                         </group>
                                     </page>
                                     <page string="Resultado" name="capacity_execution"
-                                          invisible="plan_state != 'started'">
+                                          invisible="plan_state == 'draft'">
                                         <group>
                                             <field name="source_quantity_at_start" readonly="1"/>
                                             <field name="execution_production_id" readonly="1"/>

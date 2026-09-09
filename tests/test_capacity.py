@@ -3,6 +3,7 @@ import unittest
 from services.capacity import (
     compute_quantity_allocation,
     compute_width_capacity,
+    has_required_attribute_values,
     maximum_lanes,
 )
 
@@ -81,6 +82,29 @@ class TestWidthCapacity(unittest.TestCase):
         self.assertTrue(values["overallocated"])
         self.assertEqual(values["remaining_quantity"], 0)
 
+    def test_variant_matches_all_required_values(self):
+        self.assertTrue(
+            has_required_attribute_values(
+                product_value_ids=[10, 20, 30, 40],
+                required_value_ids=[10, 20, 30],
+            )
+        )
+
+    def test_variant_does_not_match_when_one_value_differs(self):
+        self.assertFalse(
+            has_required_attribute_values(
+                product_value_ids=[10, 20, 99],
+                required_value_ids=[10, 20, 30],
+            )
+        )
+
+    def test_empty_filter_is_not_considered_compatible(self):
+        self.assertFalse(
+            has_required_attribute_values(
+                product_value_ids=[10, 20, 30],
+                required_value_ids=[],
+            )
+        )
 
 if __name__ == "__main__":
     unittest.main()

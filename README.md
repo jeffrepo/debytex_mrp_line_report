@@ -51,20 +51,22 @@ las líneas de producción de Debytex/ECOWOOL.
 - En cada orden propuesta se puede indicar el número de bandas y la cantidad
   exacta —o su porcentaje— que se desea procesar. El ancho se obtiene del
   producto y puede corregirse solamente para la propuesta.
-- La pantalla todavía no recomienda órdenes, valida compatibilidad entre
-  productos ni calcula tiempos.
+- La propuesta exige seleccionar valores comunes para **Peso**, **Color** y
+  **Metros por rollo**. El selector de órdenes muestra únicamente variantes
+  confirmadas que coinciden con los tres valores.
+- La pantalla todavía no recomienda órdenes ni calcula tiempos.
 - Cada propuesta utiliza una secuencia interna `CAP/AÑO/00000`. En sus líneas
   se indica la cantidad exacta que se procesará y se capturan los parámetros
   operativos propios de cada orden.
-- **Iniciar turno** valida primero todas las órdenes y la disponibilidad de sus
-  componentes. Si la cantidad propuesta es menor que la orden original, crea
-  una orden parcial confirmada con el remanente para que después pueda
-  asignarse al centro que el usuario decida.
-- Para cada orden incluida, el inicio asigna el centro, reserva y registra el
-  consumo planificado de componentes, inicia la orden de trabajo y conserva
-  los parámetros en el historial de turnos. El movimiento definitivo de
-  inventario continúa realizándose al finalizar la fabricación, siguiendo el
-  flujo estándar existente de Odoo y `custom_novici`.
+- **Iniciar turno** valida todas las órdenes. Si la cantidad propuesta es menor
+  que la orden original, crea una orden parcial confirmada con el remanente
+  para que después pueda asignarse al centro que el usuario decida.
+- Para cada orden incluida, el inicio asigna el centro, conserva los parámetros
+  en el historial y arranca su cronómetro sin consumir materiales.
+- Mientras el turno está activo, cada fila permite abrir las pantallas
+  existentes de **Registrar rollo** y **Consumir materiales**. Al finalizar el
+  turno esos botones desaparecen y se habilita **Reetiquetar rollo**, protegido
+  por la validación y el PIN de supervisor ya utilizados por `custom_novici`.
 
 ## Regla de cálculo
 

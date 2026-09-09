@@ -45,6 +45,13 @@ def maximum_lanes(*, useful_width_cm, product_width_cm):
     return int(math.floor(useful_width / product_width)) if product_width else 0
 
 
+def has_required_attribute_values(product_value_ids, required_value_ids):
+    """Return whether a variant contains every required attribute value."""
+    product_values = set(product_value_ids or ())
+    required_values = set(required_value_ids or ())
+    return bool(required_values) and required_values.issubset(product_values)
+
+
 def compute_quantity_allocation(
     *,
     available_quantity,
