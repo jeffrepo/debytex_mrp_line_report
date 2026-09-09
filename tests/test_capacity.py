@@ -1,6 +1,10 @@
 import unittest
 
-from services.capacity import compute_width_capacity, maximum_lanes
+from services.capacity import (
+    compute_quantity_allocation,
+    compute_width_capacity,
+    maximum_lanes,
+)
 
 
 class TestWidthCapacity(unittest.TestCase):
@@ -46,6 +50,36 @@ class TestWidthCapacity(unittest.TestCase):
 
         self.assertEqual(values["occupied_width_cm"], 0)
         self.assertEqual(values["utilization_percentage"], 0)
+
+    def test_explicit_processing_quantity_creates_a_remainder(self):
+        values = compute_quantity_allocation(
+            available_quantity=100,
+            quantity_to_process=25,
+        )
+
+        self.assertEqual(values["quantity_to_process"], 25)
+        self.assertEqual(values["remaining_quantity"], 75)
+        self.assertEqual(values["allocation_percentage"], 25)
+        self.assertTrue(values["is_partial"])
+        self.assertFalse(values["overallocated"])
+
+    def test_percentage_is_kept_as_a_legacy_fallback(self):
+        values = compute_quantity_allocation(
+            available_quantity=80,
+            allocation_percentage=25,
+        )
+
+        self.assertEqual(values["quantity_to_process"], 20)
+        self.assertEqual(values["remaining_quantity"], 60)
+
+    def test_quantity_allocation_reports_excess(self):
+        values = compute_quantity_allocation(
+            available_quantity=10,
+            quantity_to_process=11,
+        )
+
+        self.assertTrue(values["overallocated"])
+        self.assertEqual(values["remaining_quantity"], 0)
 
 
 if __name__ == "__main__":

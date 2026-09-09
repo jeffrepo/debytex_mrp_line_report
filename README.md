@@ -44,16 +44,27 @@ las líneas de producción de Debytex/ECOWOOL.
 - El turno mantiene un cronómetro de tiempo efectivo en vivo. Las pausas
   detienen el conteo, conservan motivo y duración, la reanudación continúa
   desde el acumulado y el cierre fija la duración definitiva.
-- **Fabricación > Planeación > Capacidad por centro** ofrece una simulación
+- **Fabricación > Planeación > Capacidad por centro** ofrece una propuesta
   preliminar para combinar varias órdenes en un mismo centro según su ancho.
   La pantalla muestra el ancho total, refile, ancho útil, espacio ocupado,
   espacio libre, porcentaje de aprovechamiento y una distribución visual.
-- En cada orden propuesta se puede indicar el número de bandas y el porcentaje
-  de rollos pendientes que se desea considerar. El ancho se obtiene del
-  producto y puede corregirse solamente para la simulación.
-- Esta primera versión es informativa: todavía no recomienda órdenes, valida
-  compatibilidad, calcula tiempos o materiales, reserva capacidad, divide
-  órdenes ni inicia turnos.
+- En cada orden propuesta se puede indicar el número de bandas y la cantidad
+  exacta —o su porcentaje— que se desea procesar. El ancho se obtiene del
+  producto y puede corregirse solamente para la propuesta.
+- La pantalla todavía no recomienda órdenes, valida compatibilidad entre
+  productos ni calcula tiempos.
+- Cada propuesta utiliza una secuencia interna `CAP/AÑO/00000`. En sus líneas
+  se indica la cantidad exacta que se procesará y se capturan los parámetros
+  operativos propios de cada orden.
+- **Iniciar turno** valida primero todas las órdenes y la disponibilidad de sus
+  componentes. Si la cantidad propuesta es menor que la orden original, crea
+  una orden parcial confirmada con el remanente para que después pueda
+  asignarse al centro que el usuario decida.
+- Para cada orden incluida, el inicio asigna el centro, reserva y registra el
+  consumo planificado de componentes, inicia la orden de trabajo y conserva
+  los parámetros en el historial de turnos. El movimiento definitivo de
+  inventario continúa realizándose al finalizar la fabricación, siguiendo el
+  flujo estándar existente de Odoo y `custom_novici`.
 
 ## Regla de cálculo
 
