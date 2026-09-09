@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_center_capacity_start_wizard_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.start.wizard.form</field>
+        <field name="model">debytex.mrp.center.capacity.start.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Iniciar turno de fabricación">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Parámetros de operación</h1>
+                    </div>
+                    <group>
+                        <field name="plan_id" readonly="1"/>
+                        <field name="workcenter_id" readonly="1"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        Complete los parámetros de cada orden. Use el botón
+                        <strong>Vista</strong> de cada fila para abrir el formulario
+                        completo sin cerrar esta ventana. Al confirmar se guardarán
+                        los valores y se iniciarán todos los cronómetros, sin consumir
+                        materiales automáticamente.
+                    </div>
+                    <field name="line_ids" nolabel="1">
+                        <list string="Parámetros por orden"
+                              editable="bottom"
+                              open_form_view="1"
+                              create="0"
+                              delete="0">
+                            <field name="plan_line_id" column_invisible="True"/>
+                            <field name="production_id" readonly="1"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="quantity_to_process" readonly="1"/>
+                            <field name="product_uom_id" readonly="1" optional="hide"/>
+                            <field name="line_report_target_grammage"/>
+                            <field name="line_report_pump_rpm"/>
+                            <field name="line_report_belt_speed"/>
+                            <field name="line_report_winder_speed"/>
+                            <field name="line_report_k_constant" readonly="1"/>
+                            <field name="line_report_suction" optional="hide"/>
+                            <field name="line_report_cooling" optional="hide"/>
+                            <field name="line_report_range_hood" optional="hide"/>
+                            <field name="line_report_spinning_box" optional="hide"/>
+                            <field name="line_report_temperatures" optional="hide"/>
+                            <field name="line_report_upper_calender" optional="hide"/>
+                            <field name="line_report_lower_calender" optional="hide"/>
+                            <field name="line_report_calender_pressure" optional="hide"/>
+                            <field name="line_report_additive" optional="hide"/>
+                            <field name="line_report_additive_code" optional="hide"/>
+                            <field name="line_report_additive_percentage" optional="hide"/>
+                        </list>
+                        <form string="Parámetros de la orden">
+                            <sheet>
+                                <field name="plan_line_id" invisible="1"/>
+                                <div class="oe_title">
+                                    <label for="production_id"/>
+                                    <h1>
+                                        <field name="production_id" readonly="1"/>
+                                    </h1>
+                                </div>
+                                <group>
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="quantity_to_process" readonly="1"/>
+                                    <field name="product_uom_id" readonly="1"/>
+                                </group>
+                                <separator string="Parámetros de operación registrados"/>
+                                <group>
+                                    <group>
+                                        <field name="line_report_target_grammage"/>
+                                        <field name="line_report_suction"/>
+                                        <field name="line_report_range_hood"/>
+                                        <field name="line_report_winder_speed"/>
+                                        <field name="line_report_spinning_box"/>
+                                        <label for="line_report_upper_calender"
+                                               string="Calandras superior / inferior"/>
+                                        <div class="o_row">
+                                            <field name="line_report_upper_calender"
+                                                   nolabel="1" placeholder="Superior"/>
+                                            <span class="mx-2">/</span>
+                                            <field name="line_report_lower_calender"
+                                                   nolabel="1" placeholder="Inferior"/>
+                                        </div>
+                                        <label for="line_report_additive"
+                                               string="Aditivo / código"/>
+                                        <div class="o_row">
+                                            <field name="line_report_additive"
+                                                   nolabel="1" placeholder="Aditivo"/>
+                                            <span class="mx-2">/</span>
+                                            <field name="line_report_additive_code"
+                                                   nolabel="1" placeholder="Código"/>
+                                        </div>
+                                    </group>
+                                    <group>
+                                        <field name="line_report_pump_rpm"/>
+                                        <field name="line_report_cooling"/>
+                                        <field name="line_report_belt_speed"/>
+                                        <field name="line_report_k_constant" readonly="1"/>
+                                        <field name="line_report_temperatures"/>
+                                        <field name="line_report_calender_pressure"/>
+                                        <field name="line_report_additive_percentage"/>
+                                    </group>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_and_start"
+                            string="Guardar e Iniciar Turno"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

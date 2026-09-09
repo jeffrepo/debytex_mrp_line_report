@@ -57,8 +57,7 @@
                             string="Iniciar turno"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'draft'"
-                            confirm="Se crearán las órdenes parciales necesarias y se iniciará el cronómetro de cada orden. Los materiales no se consumirán en este paso. ¿Desea continuar?"/>
+                            invisible="state != 'draft'"/>
                     <button name="action_finish_shifts"
                             string="Finalizar turno"
                             type="object"
@@ -76,10 +75,9 @@
 
                     <div class="alert alert-info" role="alert" invisible="state != 'draft'">
                         <strong>Propuesta de fabricación conjunta.</strong>
-                        Seleccione Peso, Color y Metros por rollo. Después complete
-                        la cantidad y los parámetros de cada orden compatible. Al iniciar,
-                        Odoo creará los remanentes necesarios y arrancará los cronómetros;
-                        los materiales se registrarán posteriormente desde cada orden.
+                        Seleccione Peso, Color y Metros por rollo y complete la
+                        cantidad de cada orden compatible. Al presionar Iniciar turno
+                        se solicitarán los parámetros de operación de cada producto.
                     </div>
                     <div class="alert alert-success" role="alert" invisible="state != 'started'">
                         Los turnos fueron iniciados correctamente el

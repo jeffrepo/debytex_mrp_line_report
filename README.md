@@ -61,8 +61,11 @@ las líneas de producción de Debytex/ECOWOOL.
 - **Iniciar turno** valida todas las órdenes. Si la cantidad propuesta es menor
   que la orden original, crea una orden parcial confirmada con el remanente
   para que después pueda asignarse al centro que el usuario decida.
-- Para cada orden incluida, el inicio asigna el centro, conserva los parámetros
-  en el historial y arranca su cronómetro sin consumir materiales.
+- **Iniciar turno** abre primero una ventana con un bloque de parámetros de
+  operación por cada orden incluida. Desde **Vista** se completa el formulario
+  técnico de cada producto; al confirmar, el inicio asigna el centro, conserva
+  los parámetros en el historial y arranca los cronómetros sin consumir
+  materiales.
 - Mientras el turno está activo, cada fila permite abrir las pantallas
   existentes de **Registrar rollo** y **Consumir materiales**. Al finalizar el
   turno esos botones desaparecen y se habilita **Reetiquetar rollo**, protegido
