@@ -1,6 +1,7 @@
 import re
 import unicodedata
 
+import pytz
 from markupsafe import escape
 
 from odoo import Command, _, api, fields, models
@@ -357,6 +358,278 @@ class MrpCenterCapacityPlan(models.Model):
             ).id,
             "target": "new",
         }
+
+    def _capacity_productions(self):
+        """Return the order represented by every line, preserving line order."""
+        self.ensure_one()
+        production_ids = []
+        for line in self.line_ids.sorted(
+            key=lambda item: (item.sequence, item.id)
+        ):
+            production = line.execution_production_id or line.production_id
+            if production and production.id not in production_ids:
+                production_ids.append(production.id)
+        return self.env["mrp.production"].browse(production_ids).exists()
+
+    def _capacity_related_productions(self):
+        """Include partial-order chains used by the existing final outputs."""
+        self.ensure_one()
+        related = self.env["mrp.production"]
+        for production in self._capacity_productions():
+            get_related = getattr(production, "_get_all_related_orders", None)
+            related |= get_related() if callable(get_related) else production
+        return related.exists()
+
+    def _capacity_closed_turns(self):
+        self.ensure_one()
+        productions = self._capacity_related_productions()
+        return self.env["produccion.turno.cierre"].search(
+            [("production_id", "in", productions.ids)],
+            order="fecha_inicio, id",
+        )
+
+    def action_send_all_to_stock(self):
+        """Finish every still-open manufacturing order in this proposal."""
+        self.ensure_one()
+        if self.state != "closed":
+            raise UserError(
+                _("Finalice el turno antes de enviar las órdenes a almacén.")
+            )
+        productions = self._capacity_productions().filtered(
+            lambda production: production.state
+            in ("confirmed", "progress", "to_close")
+        )
+        if not productions:
+            raise UserError(
+                _("No hay órdenes pendientes para enviar a almacén.")
+            )
+        if productions.filtered("fecha_inicio_turno"):
+            raise UserError(
+                _("Todas las órdenes deben tener el turno finalizado.")
+            )
+        result = productions.with_context(
+            active_model="mrp.production",
+            active_ids=productions.ids,
+            active_id=productions[:1].id,
+        ).button_mark_done()
+        if isinstance(result, dict):
+            return result
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_final_production_report_all(self):
+        """Generate one final PDF containing every order in the proposal."""
+        self.ensure_one()
+        if self.state != "closed":
+            raise UserError(
+                _("Finalice el turno antes de generar el reporte final.")
+            )
+        turns = self._capacity_closed_turns()
+        if not turns:
+            raise UserError(
+                _("Las órdenes de la propuesta no tienen turnos cerrados.")
+            )
+        timezone = self.env.user.tz or self.env.context.get("tz") or "UTC"
+        return self.env.ref(
+            "custom_novici.action_reporte_final_produccion"
+        ).with_context(tz=timezone).report_action(turns, config=False)
+
+    def action_print_manufacturing_orders_all(self):
+        """Generate the existing manufacturing-order PDF for all plan lines."""
+        self.ensure_one()
+        productions = self._capacity_productions()
+        if not productions:
+            raise UserError(
+                _("Agregue al menos una orden de fabricación para imprimir.")
+            )
+        return self.env.ref(
+            "custom_novici.action_reporte_mrp_production_custom"
+        ).report_action(productions)
+
+    def action_export_rolls_excel_all(self):
+        """Export one consolidated roll workbook for every plan order."""
+        self.ensure_one()
+        if self.state != "closed":
+            raise UserError(
+                _("Finalice el turno antes de exportar la lista de rollos.")
+            )
+        turns = self._capacity_closed_turns()
+        if not turns:
+            raise UserError(
+                _("Las órdenes de la propuesta no tienen turnos cerrados.")
+            )
+        return self._capacity_create_rolls_excel(turns)
+
+    def _capacity_create_rolls_excel(self, turns):
+        from datetime import datetime
+        from io import BytesIO
+        import base64
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = _("Listado de Rollos")
+
+        green_fill = PatternFill(
+            start_color="4CAF50", end_color="4CAF50", fill_type="solid"
+        )
+        gray_fill = PatternFill(
+            start_color="E0E0E0", end_color="E0E0E0", fill_type="solid"
+        )
+        archived_fill = PatternFill(
+            start_color="FFE5E5", end_color="FFE5E5", fill_type="solid"
+        )
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        label_font = Font(bold=True)
+        archived_font = Font(color="A00000")
+        centered = Alignment(horizontal="center", vertical="center")
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+        widths = (20, 20, 38, 20, 12, 14, 22, 18, 14)
+        for index, width in enumerate(widths, start=1):
+            sheet.column_dimensions[
+                sheet.cell(row=1, column=index).column_letter
+            ].width = width
+
+        sheet.merge_cells("A1:I1")
+        title = sheet["A1"]
+        title.value = _("LISTADO DE ROLLOS - %s") % self.display_name
+        title.fill = green_fill
+        title.font = header_font
+        title.alignment = centered
+        title.border = border
+
+        sheet["A3"] = _("Centro de trabajo:")
+        sheet["A3"].fill = gray_fill
+        sheet["A3"].font = label_font
+        sheet["A3"].border = border
+        sheet.merge_cells("B3:D3")
+        sheet["B3"] = self.workcenter_id.display_name
+        sheet["B3"].alignment = centered
+        sheet["B3"].border = border
+        sheet["E3"] = _("Propuesta:")
+        sheet["E3"].fill = gray_fill
+        sheet["E3"].font = label_font
+        sheet["E3"].border = border
+        sheet.merge_cells("F3:I3")
+        sheet["F3"] = self.display_name
+        sheet["F3"].alignment = centered
+        sheet["F3"].border = border
+
+        headers = (
+            _("Orden de producción"),
+            _("Orden de venta"),
+            _("Producto"),
+            _("Turno"),
+            _("N.º rollo"),
+            _("Peso (kg)"),
+            _("Usuario"),
+            _("Fecha"),
+            _("Estado"),
+        )
+        row = 5
+        for column, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=row, column=column, value=header)
+            cell.fill = green_fill
+            cell.font = header_font
+            cell.alignment = centered
+            cell.border = border
+
+        timezone = pytz.timezone(self.env.user.tz or "UTC")
+        rolls = self.env["produccion.rollo.line"].with_context(
+            active_test=False
+        ).search(
+            [("turno_id", "in", turns.ids)],
+            order="turno_id, numero_rollo, id",
+        )
+        row += 1
+        active_count = 0
+        archived_count = 0
+        for roll in rolls:
+            production = roll.production_id
+            values = (
+                production.display_name,
+                production.origin or "",
+                production.product_id.display_name,
+                roll.turno_id.display_name,
+                roll.numero_rollo or "",
+                roll.peso_rollo or 0.0,
+                roll.create_uid.display_name,
+                self._capacity_local_datetime(roll.create_date, timezone),
+                _("Activo") if roll.active else _("ARCHIVADO"),
+            )
+            for column, value in enumerate(values, start=1):
+                cell = sheet.cell(row=row, column=column, value=value)
+                cell.alignment = centered
+                cell.border = border
+                if not roll.active:
+                    cell.fill = archived_fill
+                    cell.font = archived_font
+            if roll.active:
+                active_count += 1
+            else:
+                archived_count += 1
+            row += 1
+
+        row += 1
+        sheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+        sheet.cell(row=row, column=1, value=_("TOTALES"))
+        sheet.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+        sheet.cell(
+            row=row,
+            column=5,
+            value=_("Activos: %s") % active_count,
+        )
+        sheet.merge_cells(start_row=row, start_column=7, end_row=row, end_column=9)
+        sheet.cell(
+            row=row,
+            column=7,
+            value=_("Archivados: %s") % archived_count,
+        )
+        for column in (1, 5, 7):
+            cell = sheet.cell(row=row, column=column)
+            cell.fill = gray_fill
+            cell.font = label_font
+            cell.alignment = centered
+            cell.border = border
+
+        output = BytesIO()
+        workbook.save(output)
+        filename = "Listado_Rollos_%s_%s.xlsx" % (
+            self.name.replace("/", "-"),
+            datetime.now().strftime("%Y%m%d_%H%M%S"),
+        )
+        attachment = self.env["ir.attachment"].create(
+            {
+                "name": filename,
+                "type": "binary",
+                "datas": base64.b64encode(output.getvalue()),
+                "res_model": self._name,
+                "res_id": self.id,
+                "mimetype": (
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+            }
+        )
+        output.close()
+        return {
+            "type": "ir.actions.act_url",
+            "url": "/web/content/%s?download=true" % attachment.id,
+            "target": "self",
+        }
+
+    @staticmethod
+    def _capacity_local_datetime(value, timezone):
+        if not value:
+            return ""
+        value_utc = value if value.tzinfo else pytz.utc.localize(value)
+        return value_utc.astimezone(timezone).strftime("%d/%m/%Y %H:%M")
 
     def _validate_capacity_start(self):
         self.ensure_one()
