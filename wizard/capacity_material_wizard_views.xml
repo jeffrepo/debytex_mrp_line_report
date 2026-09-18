@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_center_capacity_material_wizard_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.material.wizard.form</field>
+        <field name="model">debytex.mrp.center.capacity.material.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Consumo general de materiales">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Consumir materiales</h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="plan_id" readonly="1"/>
+                            <field name="workcenter_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_rolls" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        Registre la cantidad consumida en la columna correspondiente.
+                        Odoo la distribuirá entre las órdenes que contienen el material,
+                        en proporción a los rollos asignados a cada una.
+                    </div>
+                    <field name="line_ids" nolabel="1">
+                        <list string="Componentes"
+                              editable="bottom"
+                              create="0"
+                              delete="0">
+                            <field name="product_id" readonly="1"/>
+                            <field name="source_location_names" readonly="1"/>
+                            <field name="planned_quantity" readonly="1"/>
+                            <field name="consumed_quantity" readonly="1"/>
+                            <field name="remaining_quantity" readonly="1"/>
+                            <field name="quantity_to_consume"
+                                   sum="Total a registrar"/>
+                            <field name="product_uom_id" readonly="1"/>
+                            <field name="distribution_preview"
+                                   string="Distribución por orden"
+                                   readonly="1"
+                                   optional="show"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_apply_consumption"
+                            string="Guardar consumo prorrateado"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

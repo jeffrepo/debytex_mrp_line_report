@@ -58,6 +58,11 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
+                    <button name="action_open_material_consumption"
+                            string="Consumir materiales"
+                            type="object"
+                            class="btn-warning"
+                            invisible="state != 'started'"/>
                     <button name="action_finish_shifts"
                             string="Finalizar turno"
                             type="object"
@@ -83,7 +88,8 @@
                         Los turnos fueron iniciados correctamente el
                         <field name="started_at" class="oe_inline" readonly="1"/>
                         por <field name="started_by_id" class="oe_inline" readonly="1"/>.
-                        Use los botones de cada fila para registrar rollos o consumir materiales.
+                        Use cada fila para registrar rollos. El consumo se captura una
+                        sola vez desde el botón general Consumir materiales.
                     </div>
                     <div class="alert alert-secondary" role="alert" invisible="state != 'closed'">
                         Los turnos fueron finalizados el
@@ -170,6 +176,9 @@
                             <field name="allowed_production_ids" column_invisible="True"/>
                             <field name="can_operate_shift" column_invisible="True"/>
                             <field name="can_relabel_roll" column_invisible="True"/>
+                            <field name="can_send_to_stock" column_invisible="True"/>
+                            <field name="can_generate_outputs" column_invisible="True"/>
+                            <field name="can_print_order" column_invisible="True"/>
                             <field name="production_id" options="{'no_create': True}"/>
                             <field name="product_id" readonly="1"/>
                             <field name="attributes_match" readonly="1" optional="hide"/>
@@ -189,24 +198,44 @@
                             <button name="action_register_roll" type="object"
                                     string="Registrar rollo" class="btn-primary"
                                     invisible="not can_operate_shift"/>
-                            <button name="action_consume_materials" type="object"
-                                    string="Consumir materiales"
-                                    invisible="not can_operate_shift"/>
                             <button name="action_relabel_roll" type="object"
                                     string="Reetiquetar rollo"
                                     invisible="not can_relabel_roll"/>
+                            <button name="action_send_to_stock" type="object"
+                                    string="Enviar a Almacén" class="btn-primary"
+                                    invisible="not can_send_to_stock"
+                                    confirm="¿Desea finalizar esta orden y enviarla a almacén?"/>
+                            <button name="action_final_production_report" type="object"
+                                    string="Reporte Final de Producción"
+                                    invisible="not can_generate_outputs"/>
+                            <button name="action_export_rolls_excel" type="object"
+                                    string="Lista de Rollos Excel"
+                                    invisible="not can_generate_outputs"/>
+                            <button name="action_print_manufacturing_order" type="object"
+                                    string="Imprimir Orden de Fabricación"
+                                    invisible="not can_print_order"/>
                         </list>
                         <form string="Orden incluida en la propuesta">
                             <header>
                                 <button name="action_register_roll" type="object"
                                         string="Registrar rollo" class="btn-primary"
                                         invisible="not can_operate_shift"/>
-                                <button name="action_consume_materials" type="object"
-                                        string="Consumir materiales"
-                                        invisible="not can_operate_shift"/>
                                 <button name="action_relabel_roll" type="object"
                                         string="Reetiquetar rollo" class="btn-primary"
                                         invisible="not can_relabel_roll"/>
+                                <button name="action_send_to_stock" type="object"
+                                        string="Enviar a Almacén" class="btn-primary"
+                                        invisible="not can_send_to_stock"
+                                        confirm="¿Desea finalizar esta orden y enviarla a almacén?"/>
+                                <button name="action_final_production_report" type="object"
+                                        string="Reporte Final de Producción"
+                                        invisible="not can_generate_outputs"/>
+                                <button name="action_export_rolls_excel" type="object"
+                                        string="Lista de Rollos Excel"
+                                        invisible="not can_generate_outputs"/>
+                                <button name="action_print_manufacturing_order" type="object"
+                                        string="Imprimir Orden de Fabricación"
+                                        invisible="not can_print_order"/>
                             </header>
                             <sheet>
                                 <field name="company_id" invisible="1"/>
@@ -214,6 +243,9 @@
                                 <field name="allowed_production_ids" invisible="1"/>
                                 <field name="can_operate_shift" invisible="1"/>
                                 <field name="can_relabel_roll" invisible="1"/>
+                                <field name="can_send_to_stock" invisible="1"/>
+                                <field name="can_generate_outputs" invisible="1"/>
+                                <field name="can_print_order" invisible="1"/>
                                 <div class="oe_title">
                                     <label for="production_id"/>
                                     <h1>
@@ -251,36 +283,6 @@
                                                 <field name="occupied_width_cm" readonly="1"/>
                                                 <field name="maximum_lanes" readonly="1"/>
                                                 <field name="fits_alone" readonly="1"/>
-                                            </group>
-                                        </group>
-                                    </page>
-                                    <page string="Parámetros de operación"
-                                          name="capacity_parameters">
-                                        <div class="alert alert-info" role="alert">
-                                            Estos valores se guardarán en la orden y en
-                                            el historial del turno correspondiente a este
-                                            producto.
-                                        </div>
-                                        <group>
-                                            <group>
-                                                <field name="line_report_target_grammage" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_suction" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_range_hood" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_winder_speed" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_spinning_box" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_upper_calender" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_lower_calender" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_additive" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_additive_code" readonly="plan_state != 'draft'"/>
-                                            </group>
-                                            <group>
-                                                <field name="line_report_pump_rpm" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_cooling" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_belt_speed" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_k_constant" readonly="1"/>
-                                                <field name="line_report_temperatures" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_calender_pressure" readonly="plan_state != 'draft'"/>
-                                                <field name="line_report_additive_percentage" readonly="plan_state != 'draft'"/>
                                             </group>
                                         </group>
                                     </page>

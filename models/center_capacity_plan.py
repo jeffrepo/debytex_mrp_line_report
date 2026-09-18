@@ -254,7 +254,7 @@ class MrpCenterCapacityPlan(models.Model):
             plan.allowed_production_ids = self.env["mrp.production"].search(domain)
 
     def action_start_shifts(self):
-        """Open one operation-parameter block for every proposed order."""
+        """Open one shared operation-parameter capture for all proposed orders."""
         self.ensure_one()
         self._validate_capacity_start()
         wizard = self.env[
@@ -327,6 +327,35 @@ class MrpCenterCapacityPlan(models.Model):
             "res_id": self.id,
             "view_mode": "form",
             "target": "current",
+        }
+
+    def action_open_material_consumption(self):
+        self.ensure_one()
+        if self.state != "started":
+            raise UserError(_("Sólo puede consumir durante un turno activo."))
+        active_lines = self.line_ids.filtered(
+            lambda line: line.execution_production_id.fecha_inicio_turno
+        )
+        if not active_lines:
+            raise UserError(_("No hay órdenes con un turno activo."))
+        wizard = self.env[
+            "debytex.mrp.center.capacity.material.wizard"
+        ].create_from_plan(self)
+        if not wizard.line_ids:
+            raise UserError(
+                _("Las órdenes activas no tienen materiales para consumir.")
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Consumir materiales - %s") % self.display_name,
+            "res_model": "debytex.mrp.center.capacity.material.wizard",
+            "res_id": wizard.id,
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "debytex_mrp_line_report."
+                "view_mrp_center_capacity_material_wizard_form"
+            ).id,
+            "target": "new",
         }
 
     def _validate_capacity_start(self):
@@ -646,6 +675,18 @@ class MrpCenterCapacityPlanLine(models.Model):
         string="Puede reetiquetar",
         compute="_compute_shift_actions",
     )
+    can_send_to_stock = fields.Boolean(
+        string="Puede enviar a almacén",
+        compute="_compute_shift_actions",
+    )
+    can_generate_outputs = fields.Boolean(
+        string="Puede generar reportes",
+        compute="_compute_shift_actions",
+    )
+    can_print_order = fields.Boolean(
+        string="Puede imprimir la orden",
+        compute="_compute_shift_actions",
+    )
     line_report_target_grammage = fields.Float(
         string="Gramaje objetivo (g/m²)"
     )
@@ -731,6 +772,7 @@ class MrpCenterCapacityPlanLine(models.Model):
         "execution_production_id.state",
         "execution_production_id.rollo_ids.active",
         "execution_production_id.rollo_ids.etiquetado",
+        "execution_production_id.turno_cierre_ids",
     )
     def _compute_shift_actions(self):
         for line in self:
@@ -749,6 +791,20 @@ class MrpCenterCapacityPlanLine(models.Model):
                 and production.rollo_ids.filtered(
                     lambda roll: roll.active and roll.etiquetado
                 )
+            )
+            line.can_send_to_stock = bool(
+                line.plan_state == "closed"
+                and production
+                and not production.fecha_inicio_turno
+                and production.state in ("confirmed", "progress", "to_close")
+            )
+            line.can_generate_outputs = bool(
+                line.plan_state == "closed"
+                and production
+                and production.turno_cierre_ids
+            )
+            line.can_print_order = bool(
+                line.execution_production_id or line.production_id
             )
 
     def _matches_required_attributes(self):
@@ -773,14 +829,6 @@ class MrpCenterCapacityPlanLine(models.Model):
             )
         return self.execution_production_id.action_open_registro_rollo()
 
-    def action_consume_materials(self):
-        self.ensure_one()
-        if not self.can_operate_shift:
-            raise UserError(
-                _("Sólo puede consumir materiales mientras el turno está activo.")
-            )
-        return self.execution_production_id.action_open_consumo_real()
-
     def action_relabel_roll(self):
         self.ensure_one()
         if not self.can_relabel_roll:
@@ -798,6 +846,47 @@ class MrpCenterCapacityPlanLine(models.Model):
             "default_production_id": self.execution_production_id.id,
         }
         return action
+
+    def _capacity_action_production(self):
+        self.ensure_one()
+        production = self.execution_production_id or self.production_id
+        if not production:
+            raise UserError(_("La línea no tiene una orden de fabricación."))
+        return production
+
+    def action_send_to_stock(self):
+        self.ensure_one()
+        if not self.can_send_to_stock:
+            raise UserError(
+                _("Finalice el turno antes de enviar la orden a almacén.")
+            )
+        result = self._capacity_action_production().button_mark_done()
+        if isinstance(result, dict):
+            return result
+        return {
+            "type": "ir.actions.client",
+            "tag": "reload",
+        }
+
+    def action_final_production_report(self):
+        self.ensure_one()
+        if not self.can_generate_outputs:
+            raise UserError(
+                _("Finalice el turno antes de generar el reporte final.")
+            )
+        return self._capacity_action_production().action_reporte_final_produccion()
+
+    def action_export_rolls_excel(self):
+        self.ensure_one()
+        if not self.can_generate_outputs:
+            raise UserError(
+                _("Finalice el turno antes de exportar la lista de rollos.")
+            )
+        return self._capacity_action_production().action_export_rollos_excel()
+
+    def action_print_manufacturing_order(self):
+        self.ensure_one()
+        return self._capacity_action_production().action_reporte_mrp_production_custom()
 
     @api.depends(
         "production_id",

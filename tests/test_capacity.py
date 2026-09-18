@@ -5,6 +5,7 @@ from services.capacity import (
     compute_width_capacity,
     has_required_attribute_values,
     maximum_lanes,
+    prorate_quantity,
 )
 
 
@@ -105,6 +106,17 @@ class TestWidthCapacity(unittest.TestCase):
                 required_value_ids=[],
             )
         )
+
+    def test_consumption_is_prorated_by_roll_quantity(self):
+        quantities = prorate_quantity(100, [100, 25, 25])
+
+        self.assertAlmostEqual(quantities[0], 66.6666666667)
+        self.assertAlmostEqual(quantities[1], 16.6666666667)
+        self.assertAlmostEqual(quantities[2], 16.6666666666)
+        self.assertAlmostEqual(sum(quantities), 100)
+
+    def test_proration_without_weights_allocates_nothing(self):
+        self.assertEqual(prorate_quantity(25, [0, 0]), [0.0, 0.0])
 
 if __name__ == "__main__":
     unittest.main()
