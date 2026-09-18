@@ -69,6 +69,24 @@
                             class="btn-primary"
                             invisible="state != 'started'"
                             confirm="Se finalizará el turno de todas las órdenes incluidas. ¿Desea continuar?"/>
+                    <button name="action_send_all_to_stock"
+                            string="Enviar todas a Almacén"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'closed'"
+                            confirm="Se enviarán a almacén todas las órdenes pendientes de esta propuesta. ¿Desea continuar?"/>
+                    <button name="action_final_production_report_all"
+                            string="Reporte Final General"
+                            type="object"
+                            invisible="state != 'closed'"/>
+                    <button name="action_export_rolls_excel_all"
+                            string="Lista de Rollos Excel"
+                            type="object"
+                            invisible="state != 'closed'"/>
+                    <button name="action_print_manufacturing_orders_all"
+                            string="Imprimir Órdenes"
+                            type="object"
+                            invisible="not line_ids"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,started,closed"/>
                 </header>
                 <sheet>

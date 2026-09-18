@@ -75,6 +75,9 @@ las líneas de producción de Debytex/ECOWOOL.
   **Enviar a Almacén**, **Reporte Final de Producción** y **Lista de Rollos
   Excel**. El reetiquetado conserva la validación y el PIN de supervisor de
   `custom_novici`.
+- El encabezado ofrece también acciones generales para enviar a almacén todas
+  las órdenes pendientes, imprimir todas las órdenes y generar un único reporte
+  final o archivo Excel consolidado con los rollos de toda la propuesta.
 
 ## Regla de cálculo
 
