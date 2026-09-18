@@ -52,6 +52,29 @@ def has_required_attribute_values(product_value_ids, required_value_ids):
     return bool(required_values) and required_values.issubset(product_values)
 
 
+def prorate_quantity(total_quantity, weights):
+    """Distribute a quantity proportionally while preserving the exact total."""
+    total = _non_negative(total_quantity)
+    normalized_weights = [_non_negative(weight) for weight in weights]
+    weight_total = sum(normalized_weights)
+    if not normalized_weights:
+        return []
+    if not weight_total:
+        return [0.0] * len(normalized_weights)
+
+    result = []
+    remaining = total
+    for index, weight in enumerate(normalized_weights):
+        quantity = (
+            remaining
+            if index == len(normalized_weights) - 1
+            else total * weight / weight_total
+        )
+        result.append(quantity)
+        remaining -= quantity
+    return result
+
+
 def compute_quantity_allocation(
     *,
     available_quantity,

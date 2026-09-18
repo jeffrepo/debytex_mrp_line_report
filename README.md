@@ -62,15 +62,19 @@ las líneas de producción de Debytex/ECOWOOL.
 - **Iniciar turno** valida todas las órdenes. Si la cantidad propuesta es menor
   que la orden original, crea una orden parcial confirmada con el remanente
   para que después pueda asignarse al centro que el usuario decida.
-- **Iniciar turno** abre primero una ventana con un bloque de parámetros de
-  operación por cada orden incluida. Desde **Vista** se completa el formulario
-  técnico de cada producto; al confirmar, el inicio asigna el centro, conserva
-  los parámetros en el historial y arranca los cronómetros sin consumir
-  materiales.
-- Mientras el turno está activo, cada fila permite abrir las pantallas
-  existentes de **Registrar rollo** y **Consumir materiales**. Al finalizar el
-  turno esos botones desaparecen y se habilita **Reetiquetar rollo**, protegido
-  por la validación y el PIN de supervisor ya utilizados por `custom_novici`.
+- **Iniciar turno** abre una sola captura de parámetros de operación. Los
+  valores ingresados se guardan en todas las órdenes incluidas y en sus
+  historiales; después se asigna el centro y se arrancan los cronómetros sin
+  consumir materiales.
+- Mientras el turno está activo, cada fila permite **Registrar rollo**. El
+  botón general **Consumir materiales** muestra una tabla tipo Componentes,
+  sin teclado emergente, captura una sola cantidad por material y la prorratea
+  entre las órdenes que lo contienen según los rollos asignados a cada una.
+- Cada fila permite **Imprimir Orden de Fabricación**. Al finalizar el turno se
+  deshabilita la operación y se habilitan por orden **Reetiquetar rollo**,
+  **Enviar a Almacén**, **Reporte Final de Producción** y **Lista de Rollos
+  Excel**. El reetiquetado conserva la validación y el PIN de supervisor de
+  `custom_novici`.
 
 ## Regla de cálculo
 
