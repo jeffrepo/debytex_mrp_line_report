@@ -70,6 +70,9 @@ las líneas de producción de Debytex/ECOWOOL.
   botón general **Consumir materiales** muestra una tabla tipo Componentes,
   sin teclado emergente, captura una sola cantidad por material y la prorratea
   entre las órdenes que lo contienen según los rollos asignados a cada una.
+  Si las órdenes no tienen componentes, la misma ventana permite agregar el
+  material manualmente; Odoo crea el movimiento correspondiente en cada orden
+  activa antes de registrar el consumo prorrateado.
 - Cada fila permite **Imprimir Orden de Fabricación**. Al finalizar el turno se
   deshabilita la operación y se habilitan por orden **Reetiquetar rollo**,
   **Enviar a Almacén**, **Reporte Final de Producción** y **Lista de Rollos
