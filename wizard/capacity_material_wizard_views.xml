@@ -22,13 +22,22 @@
                         Registre la cantidad consumida en la columna correspondiente.
                         Odoo la distribuirá entre las órdenes que contienen el material,
                         en proporción a los rollos asignados a cada una.
+                        Si las órdenes no tienen componentes, utilice
+                        <strong>Agregar material manual</strong>; el componente se
+                        creará automáticamente en cada orden activa.
                     </div>
                     <field name="line_ids" nolabel="1">
                         <list string="Componentes"
                               editable="bottom"
-                              create="0"
-                              delete="0">
-                            <field name="product_id" readonly="1"/>
+                              create="1"
+                              delete="1">
+                            <control>
+                                <create string="Agregar material manual"/>
+                            </control>
+                            <field name="is_manual" column_invisible="True"/>
+                            <field name="product_id"
+                                   readonly="not is_manual"
+                                   options="{'no_create': True}"/>
                             <field name="source_location_names" readonly="1"/>
                             <field name="planned_quantity" readonly="1"/>
                             <field name="consumed_quantity" readonly="1"/>

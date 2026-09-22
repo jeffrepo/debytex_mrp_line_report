@@ -1,6 +1,6 @@
 {
     "name": "Debytex - Reporte de Producción por Línea",
-    "version": "18.0.1.11.1",
+    "version": "18.0.1.12.0",
     "category": "Manufacturing/Reporting",
     "summary": "Reporte técnico y general de producción por línea",
     "description": """

@@ -342,10 +342,6 @@ class MrpCenterCapacityPlan(models.Model):
         wizard = self.env[
             "debytex.mrp.center.capacity.material.wizard"
         ].create_from_plan(self)
-        if not wizard.line_ids:
-            raise UserError(
-                _("Las órdenes activas no tienen materiales para consumir.")
-            )
         return {
             "type": "ir.actions.act_window",
             "name": _("Consumir materiales - %s") % self.display_name,

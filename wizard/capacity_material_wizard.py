@@ -81,6 +81,7 @@ class MrpCenterCapacityMaterialWizard(models.TransientModel):
                         {
                             "product_id": product_id,
                             "product_uom_id": product_uom_id,
+                            "is_manual": False,
                             "source_location_names": ", ".join(
                                 sorted(
                                     groups[(product_id, product_uom_id)][
@@ -186,12 +187,15 @@ class MrpCenterCapacityMaterialWizard(models.TransientModel):
         consumed_at = fields.Datetime.now()
         summaries = defaultdict(list)
         productions = self.env["mrp.production"]
+        created_moves = self.env["stock.move"]
         for allocation in allocations:
             move = allocation["move"]
             production = allocation["production"]
             quantity = allocation["quantity"]
             if quantity <= 0:
                 continue
+            if allocation.get("move_created"):
+                created_moves |= move
             self.env["consumo.material.turno"].sudo().create(
                 {
                     "production_id": production.id,
@@ -213,6 +217,8 @@ class MrpCenterCapacityMaterialWizard(models.TransientModel):
             )
 
         consumption_wizard = self.env["consumo.real.wizard"]
+        if created_moves:
+            created_moves._action_confirm(merge=False)
         for production in productions:
             consumption_wizard.recalcular_totales_consumo(production.id)
             production.message_post(
@@ -226,6 +232,8 @@ class MrpCenterCapacityMaterialWizard(models.TransientModel):
                 },
                 message_type="notification",
             )
+        if created_moves:
+            created_moves._action_assign()
 
 
 class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
@@ -242,12 +250,17 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
         "product.product",
         string="Material",
         required=True,
-        readonly=True,
+        domain=[("type", "!=", "service")],
     )
     product_uom_id = fields.Many2one(
         "uom.uom",
         string="Unidad",
         required=True,
+        readonly=True,
+    )
+    is_manual = fields.Boolean(
+        string="Agregado manualmente",
+        default=True,
         readonly=True,
     )
     source_location_names = fields.Char(
@@ -286,6 +299,29 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
         )
     ]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for values in vals_list:
+            product = self.env["product.product"].browse(
+                values.get("product_id")
+            ).exists()
+            if product and not values.get("product_uom_id"):
+                values["product_uom_id"] = product.uom_id.id
+        return super().create(vals_list)
+
+    @api.onchange("product_id")
+    def _onchange_manual_product(self):
+        for line in self:
+            if not line.is_manual or not line.product_id:
+                continue
+            line.product_uom_id = line.product_id.uom_id
+            locations = line._manual_plan_lines().mapped(
+                "execution_production_id.location_src_id"
+            )
+            line.source_location_names = ", ".join(
+                locations.mapped("display_name")
+            )
+
     @api.constrains("quantity_to_consume")
     def _check_quantity_to_consume(self):
         for line in self:
@@ -322,6 +358,8 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
 
     def _eligible_plan_lines(self):
         self.ensure_one()
+        if self.is_manual:
+            return self._manual_plan_lines()
         return self.wizard_id.plan_id.line_ids.filtered(
             lambda plan_line: (
                 plan_line.execution_production_id.fecha_inicio_turno
@@ -332,6 +370,15 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
                         and move.product_uom == self.product_uom_id
                     )
                 )
+            )
+        )
+
+    def _manual_plan_lines(self):
+        self.ensure_one()
+        return self.wizard_id.plan_id.line_ids.filtered(
+            lambda plan_line: (
+                plan_line.execution_production_id.fecha_inicio_turno
+                and plan_line.quantity_to_process > 0
             )
         )
 
@@ -355,6 +402,8 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
         for plan_line, production_quantity in zip(
             plan_lines, production_quantities
         ):
+            if production_quantity <= 0:
+                continue
             production = plan_line.execution_production_id
             moves = production.move_raw_ids.filtered(
                 lambda move: (
@@ -363,6 +412,13 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
                     and move.product_uom == self.product_uom_id
                 )
             )
+            move_created = False
+            if not moves and self.is_manual:
+                moves = self._create_manual_component_move(
+                    production,
+                    production_quantity,
+                )
+                move_created = True
             demand_total = sum(max(move.product_uom_qty, 0.0) for move in moves)
             move_weights = (
                 [max(move.product_uom_qty, 0.0) for move in moves]
@@ -378,6 +434,46 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
                         "production": production,
                         "move": move,
                         "quantity": move_quantity,
+                        "move_created": move_created,
                     }
                 )
         return allocations
+
+    def _create_manual_component_move(self, production, quantity):
+        self.ensure_one()
+        if (
+            not production.location_src_id
+            or not production.production_location_id
+        ):
+            raise UserError(
+                _(
+                    "La orden %(order)s no tiene ubicaciones configuradas para "
+                    "agregar el material %(product)s."
+                )
+                % {
+                    "order": production.display_name,
+                    "product": self.product_id.display_name,
+                }
+            )
+        move = self.env["stock.move"].create(
+            {
+                "name": self.product_id.display_name,
+                "origin": production.name,
+                "product_id": self.product_id.id,
+                "product_uom": self.product_uom_id.id,
+                "product_uom_qty": quantity,
+                "location_id": production.location_src_id.id,
+                "location_dest_id": production.production_location_id.id,
+                "raw_material_production_id": production.id,
+                "picking_type_id": production.picking_type_id.id,
+                "company_id": production.company_id.id,
+                "group_id": (
+                    production.procurement_group_id.id
+                    if production.procurement_group_id
+                    else False
+                ),
+                "state": "draft",
+            }
+        )
+        move.write({"production_id": False})
+        return move
