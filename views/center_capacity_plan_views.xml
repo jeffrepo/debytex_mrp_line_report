@@ -192,11 +192,7 @@
                             <field name="sequence" widget="handle"/>
                             <field name="company_id" column_invisible="True"/>
                             <field name="allowed_production_ids" column_invisible="True"/>
-                            <field name="can_operate_shift" column_invisible="True"/>
                             <field name="can_relabel_roll" column_invisible="True"/>
-                            <field name="can_send_to_stock" column_invisible="True"/>
-                            <field name="can_generate_outputs" column_invisible="True"/>
-                            <field name="can_print_order" column_invisible="True"/>
                             <field name="production_id" options="{'no_create': True}"/>
                             <field name="product_id" readonly="1"/>
                             <field name="attributes_match" readonly="1" optional="hide"/>
@@ -213,57 +209,21 @@
                             <field name="execution_production_id" readonly="1" optional="hide"/>
                             <field name="remainder_production_id" readonly="1" optional="hide"/>
                             <field name="shift_history_id" readonly="1" optional="hide"/>
-                            <button name="action_register_roll" type="object"
-                                    string="Registrar rollo" class="btn-primary"
-                                    invisible="not can_operate_shift"/>
                             <button name="action_relabel_roll" type="object"
                                     string="Reetiquetar rollo"
                                     invisible="not can_relabel_roll"/>
-                            <button name="action_send_to_stock" type="object"
-                                    string="Enviar a Almacén" class="btn-primary"
-                                    invisible="not can_send_to_stock"
-                                    confirm="¿Desea finalizar esta orden y enviarla a almacén?"/>
-                            <button name="action_final_production_report" type="object"
-                                    string="Reporte Final de Producción"
-                                    invisible="not can_generate_outputs"/>
-                            <button name="action_export_rolls_excel" type="object"
-                                    string="Lista de Rollos Excel"
-                                    invisible="not can_generate_outputs"/>
-                            <button name="action_print_manufacturing_order" type="object"
-                                    string="Imprimir Orden de Fabricación"
-                                    invisible="not can_print_order"/>
                         </list>
                         <form string="Orden incluida en la propuesta">
                             <header>
-                                <button name="action_register_roll" type="object"
-                                        string="Registrar rollo" class="btn-primary"
-                                        invisible="not can_operate_shift"/>
                                 <button name="action_relabel_roll" type="object"
                                         string="Reetiquetar rollo" class="btn-primary"
                                         invisible="not can_relabel_roll"/>
-                                <button name="action_send_to_stock" type="object"
-                                        string="Enviar a Almacén" class="btn-primary"
-                                        invisible="not can_send_to_stock"
-                                        confirm="¿Desea finalizar esta orden y enviarla a almacén?"/>
-                                <button name="action_final_production_report" type="object"
-                                        string="Reporte Final de Producción"
-                                        invisible="not can_generate_outputs"/>
-                                <button name="action_export_rolls_excel" type="object"
-                                        string="Lista de Rollos Excel"
-                                        invisible="not can_generate_outputs"/>
-                                <button name="action_print_manufacturing_order" type="object"
-                                        string="Imprimir Orden de Fabricación"
-                                        invisible="not can_print_order"/>
                             </header>
                             <sheet>
                                 <field name="company_id" invisible="1"/>
                                 <field name="plan_state" invisible="1"/>
                                 <field name="allowed_production_ids" invisible="1"/>
-                                <field name="can_operate_shift" invisible="1"/>
                                 <field name="can_relabel_roll" invisible="1"/>
-                                <field name="can_send_to_stock" invisible="1"/>
-                                <field name="can_generate_outputs" invisible="1"/>
-                                <field name="can_print_order" invisible="1"/>
                                 <div class="oe_title">
                                     <label for="production_id"/>
                                     <h1>

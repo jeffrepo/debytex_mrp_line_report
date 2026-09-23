@@ -66,19 +66,17 @@ las líneas de producción de Debytex/ECOWOOL.
   valores ingresados se guardan en todas las órdenes incluidas y en sus
   historiales; después se asigna el centro y se arrancan los cronómetros sin
   consumir materiales.
-- Mientras el turno está activo, cada fila permite **Registrar rollo**. El
-  botón general **Consumir materiales** muestra una tabla tipo Componentes,
+- El botón general **Consumir materiales** muestra una tabla tipo Componentes,
   sin teclado emergente, captura una sola cantidad por material y la prorratea
   entre todas las órdenes activas según los rollos asignados a cada una. Si el
   componente falta en alguna orden, se crea automáticamente antes del consumo.
   Si las órdenes no tienen componentes, la misma ventana permite agregar el
   material manualmente; Odoo crea el movimiento correspondiente en cada orden
   activa antes de registrar el consumo prorrateado.
-- Cada fila permite **Imprimir Orden de Fabricación**. Al finalizar el turno se
-  deshabilita la operación y se habilitan por orden **Reetiquetar rollo**,
-  **Enviar a Almacén**, **Reporte Final de Producción** y **Lista de Rollos
-  Excel**. El reetiquetado conserva la validación y el PIN de supervisor de
-  `custom_novici`.
+- La única acción disponible en cada fila es **Reetiquetar rollo** después de
+  finalizar el turno, conservando la validación y el PIN de supervisor de
+  `custom_novici`. Las impresiones y acciones operativas se ejecutan desde los
+  botones generales del encabezado.
 - El encabezado ofrece también acciones generales para enviar a almacén todas
   las órdenes pendientes, imprimir todas las órdenes y generar un único reporte
   final o archivo Excel consolidado con los rollos de toda la propuesta.
