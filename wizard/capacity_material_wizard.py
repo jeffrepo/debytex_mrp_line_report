@@ -302,6 +302,7 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
+            values.setdefault("is_manual", True)
             product = self.env["product.product"].browse(
                 values.get("product_id")
             ).exists()
@@ -315,7 +316,7 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
             if not line.is_manual or not line.product_id:
                 continue
             line.product_uom_id = line.product_id.uom_id
-            locations = line._manual_plan_lines().mapped(
+            locations = line._active_plan_lines().mapped(
                 "execution_production_id.location_src_id"
             )
             line.source_location_names = ", ".join(
@@ -358,22 +359,9 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
 
     def _eligible_plan_lines(self):
         self.ensure_one()
-        if self.is_manual:
-            return self._manual_plan_lines()
-        return self.wizard_id.plan_id.line_ids.filtered(
-            lambda plan_line: (
-                plan_line.execution_production_id.fecha_inicio_turno
-                and plan_line.execution_production_id.move_raw_ids.filtered(
-                    lambda move: (
-                        move.state not in ("done", "cancel")
-                        and move.product_id == self.product_id
-                        and move.product_uom == self.product_uom_id
-                    )
-                )
-            )
-        )
+        return self._active_plan_lines()
 
-    def _manual_plan_lines(self):
+    def _active_plan_lines(self):
         self.ensure_one()
         return self.wizard_id.plan_id.line_ids.filtered(
             lambda plan_line: (
@@ -413,8 +401,8 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
                 )
             )
             move_created = False
-            if not moves and self.is_manual:
-                moves = self._create_manual_component_move(
+            if not moves:
+                moves = self._create_component_move(
                     production,
                     production_quantity,
                 )
@@ -439,7 +427,7 @@ class MrpCenterCapacityMaterialWizardLine(models.TransientModel):
                 )
         return allocations
 
-    def _create_manual_component_move(self, production, quantity):
+    def _create_component_move(self, production, quantity):
         self.ensure_one()
         if (
             not production.location_src_id

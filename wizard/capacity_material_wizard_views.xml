@@ -20,13 +20,16 @@
                     </group>
                     <div class="alert alert-info" role="alert">
                         Registre la cantidad consumida en la columna correspondiente.
-                        Odoo la distribuirá entre las órdenes que contienen el material,
-                        en proporción a los rollos asignados a cada una.
+                        Odoo la distribuirá entre todas las órdenes activas, en
+                        proporción a los rollos asignados a cada una, y creará el
+                        componente en las órdenes donde todavía no exista.
                         Si las órdenes no tienen componentes, utilice
                         <strong>Agregar material manual</strong>; el componente se
                         creará automáticamente en cada orden activa.
                     </div>
-                    <field name="line_ids" nolabel="1">
+                    <field name="line_ids"
+                           nolabel="1"
+                           context="{'default_is_manual': True}">
                         <list string="Componentes"
                               editable="bottom"
                               create="1"
