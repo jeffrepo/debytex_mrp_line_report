@@ -69,7 +69,8 @@ las líneas de producción de Debytex/ECOWOOL.
 - Mientras el turno está activo, cada fila permite **Registrar rollo**. El
   botón general **Consumir materiales** muestra una tabla tipo Componentes,
   sin teclado emergente, captura una sola cantidad por material y la prorratea
-  entre las órdenes que lo contienen según los rollos asignados a cada una.
+  entre todas las órdenes activas según los rollos asignados a cada una. Si el
+  componente falta en alguna orden, se crea automáticamente antes del consumo.
   Si las órdenes no tienen componentes, la misma ventana permite agregar el
   material manualmente; Odoo crea el movimiento correspondiente en cada orden
   activa antes de registrar el consumo prorrateado.
