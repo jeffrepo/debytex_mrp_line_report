@@ -192,6 +192,7 @@
                             <field name="sequence" widget="handle"/>
                             <field name="company_id" column_invisible="True"/>
                             <field name="allowed_production_ids" column_invisible="True"/>
+                            <field name="can_operate_shift" column_invisible="True"/>
                             <field name="can_relabel_roll" column_invisible="True"/>
                             <field name="production_id" options="{'no_create': True}"/>
                             <field name="product_id" readonly="1"/>
@@ -209,12 +210,18 @@
                             <field name="execution_production_id" readonly="1" optional="hide"/>
                             <field name="remainder_production_id" readonly="1" optional="hide"/>
                             <field name="shift_history_id" readonly="1" optional="hide"/>
+                            <button name="action_register_roll" type="object"
+                                    string="Registrar rollo" class="btn-primary"
+                                    invisible="not can_operate_shift"/>
                             <button name="action_relabel_roll" type="object"
                                     string="Reetiquetar rollo"
                                     invisible="not can_relabel_roll"/>
                         </list>
                         <form string="Orden incluida en la propuesta">
                             <header>
+                                <button name="action_register_roll" type="object"
+                                        string="Registrar rollo" class="btn-primary"
+                                        invisible="not can_operate_shift"/>
                                 <button name="action_relabel_roll" type="object"
                                         string="Reetiquetar rollo" class="btn-primary"
                                         invisible="not can_relabel_roll"/>
@@ -223,6 +230,7 @@
                                 <field name="company_id" invisible="1"/>
                                 <field name="plan_state" invisible="1"/>
                                 <field name="allowed_production_ids" invisible="1"/>
+                                <field name="can_operate_shift" invisible="1"/>
                                 <field name="can_relabel_roll" invisible="1"/>
                                 <div class="oe_title">
                                     <label for="production_id"/>
