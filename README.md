@@ -73,10 +73,10 @@ las líneas de producción de Debytex/ECOWOOL.
   Si las órdenes no tienen componentes, la misma ventana permite agregar el
   material manualmente; Odoo crea el movimiento correspondiente en cada orden
   activa antes de registrar el consumo prorrateado.
-- La única acción disponible en cada fila es **Reetiquetar rollo** después de
-  finalizar el turno, conservando la validación y el PIN de supervisor de
-  `custom_novici`. Las impresiones y acciones operativas se ejecutan desde los
-  botones generales del encabezado.
+- Cada fila permite **Registrar rollo** mientras el turno está activo y
+  **Reetiquetar rollo** después de finalizarlo, conservando la validación y el
+  PIN de supervisor de `custom_novici`. Las impresiones y las demás acciones
+  operativas se ejecutan desde los botones generales del encabezado.
 - El encabezado ofrece también acciones generales para enviar a almacén todas
   las órdenes pendientes, imprimir todas las órdenes y generar un único reporte
   final o archivo Excel consolidado con los rollos de toda la propuesta.
