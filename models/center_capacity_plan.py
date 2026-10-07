@@ -1096,7 +1096,20 @@ class MrpCenterCapacityPlanLine(models.Model):
             raise UserError(
                 _("Sólo puede registrar rollos mientras el turno está activo.")
             )
-        return self.execution_production_id.action_open_registro_rollo()
+        action = self.execution_production_id.action_open_registro_rollo()
+        wizard_view = self.env.ref(
+            "custom_novici.view_registro_rollo_wizard_form"
+        )
+        # The production method does not pin a view, so Odoo may select another
+        # registro.rollo.wizard form left in the database by an older version.
+        action.update(
+            {
+                "view_id": wizard_view.id,
+                "views": [(wizard_view.id, "form")],
+                "target": "new",
+            }
+        )
+        return action
 
     def action_relabel_roll(self):
         self.ensure_one()
