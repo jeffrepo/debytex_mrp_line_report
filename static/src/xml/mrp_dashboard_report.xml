@@ -93,6 +93,15 @@
                 <table class="debytex-dashboard-summary-table">
                     <tbody>
                         <tr><th>Turno</th><td><t t-esc="displayLineReportValue(summary.shift_label)"/></td></tr>
+                        <tr>
+                            <th>Tiempo efectivo</th>
+                            <td>
+                                <span t-attf-class="debytex-shift-timer debytex-dashboard-effective-timer debytex-shift-timer-#{summary.effective_time_state || 'closed'}">
+                                    <i t-attf-class="fa #{dashboardEffectiveTimerIcon(summary)}"/>
+                                    <t t-esc="formatDashboardEffectiveTime(mo, summary)"/>
+                                </span>
+                            </td>
+                        </tr>
                         <tr><th>Cliente</th><td><t t-esc="displayLineReportValue(summary.client_name)"/></td></tr>
                         <tr><th>Producto</th><td class="debytex-summary-product"><t t-esc="displayLineReportValue(summary.product_name)"/></td></tr>
                         <tr><th>Orden / lote</th><td><t t-esc="displayLineReportValue(summary.production_name)"/> / <t t-esc="displayLineReportValue(summary.lot_name)"/></td></tr>

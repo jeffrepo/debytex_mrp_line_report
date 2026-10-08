@@ -22,7 +22,8 @@ las líneas de producción de Debytex/ECOWOOL.
   disponibles e identifica claramente el detalle como información en vivo.
 - Cada tarjeta del tablero conserva la agrupación por línea y muestra el
   resumen operativo del reporte para su orden: turno, cliente, producto,
-  orden/lote, especificación, color, rollos y tiempo restante.
+  orden/lote, especificación, color, rollos, tiempo efectivo en vivo y tiempo
+  restante. El cronómetro se congela durante las pausas y continúa al reanudar.
 - Las órdenes iniciadas desde **Capacidad por centro** permanecen incluidas en
   **Producción en Tiempo Real** mientras su turno esté activo, aunque el centro
   ya tenga cuatro o más órdenes visibles.

@@ -46,8 +46,11 @@ patch(MrpDashboard.prototype, {
         this.state.dashboardSequencePosition = "1";
         this.state.dashboardSequenceLoading = false;
         this.state.dashboardSequenceSaving = false;
+        this.state.dashboardTimerNow = Date.now();
         this._lineReportRequestToken = 0;
         this._dashboardSequenceRequestToken = 0;
+        this._dashboardTimerSamples = new Map();
+        this._dashboardTimerInterval = null;
         this._debytexLineGrid = null;
 
         const originalOpenPriorityModal = this.openPriorityModal;
@@ -167,6 +170,56 @@ patch(MrpDashboard.prototype, {
             }
         };
 
+        this.formatDashboardEffectiveTime = (production, summary) => {
+            if (!summary?.effective_time_available) {
+                return "—";
+            }
+            const productionId = Number(production.id);
+            const baseSeconds = Math.max(
+                Math.floor(Number(summary.effective_time_seconds || 0)),
+                0
+            );
+            const timerState = summary.effective_time_state || "closed";
+            const shiftId = Number(summary.effective_time_shift_id || 0);
+            let sample = this._dashboardTimerSamples.get(productionId);
+            if (
+                !sample ||
+                sample.baseSeconds !== baseSeconds ||
+                sample.timerState !== timerState ||
+                sample.shiftId !== shiftId
+            ) {
+                sample = {
+                    baseSeconds,
+                    timerState,
+                    shiftId,
+                    sampledAt: this.state.dashboardTimerNow,
+                };
+                this._dashboardTimerSamples.set(productionId, sample);
+            }
+            const liveSeconds = timerState === "running"
+                ? Math.floor(
+                    (this.state.dashboardTimerNow - sample.sampledAt) / 1000
+                )
+                : 0;
+            const totalSeconds = Math.max(baseSeconds + liveSeconds, 0);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return [hours, minutes, seconds]
+                .map((value) => String(value).padStart(2, "0"))
+                .join(":");
+        };
+
+        this.dashboardEffectiveTimerIcon = (summary) => {
+            if (summary?.effective_time_state === "paused") {
+                return "fa-pause-circle";
+            }
+            if (summary?.effective_time_state === "running") {
+                return "fa-clock-o";
+            }
+            return "fa-stop-circle";
+        };
+
         this._updateFourLineLayout = () => {
             const cards = [...document.querySelectorAll(SUMMARY_CARD_SELECTOR)];
             const lineGrid = findLineGrid(cards);
@@ -180,9 +233,16 @@ patch(MrpDashboard.prototype, {
             this._debytexLineGrid = lineGrid;
         };
 
-        onMounted(this._updateFourLineLayout);
+        onMounted(() => {
+            this._updateFourLineLayout();
+            this._dashboardTimerInterval = setInterval(() => {
+                this.state.dashboardTimerNow = Date.now();
+            }, 1000);
+        });
         onPatched(this._updateFourLineLayout);
         onWillUnmount(() => {
+            clearInterval(this._dashboardTimerInterval);
+            this._dashboardTimerSamples.clear();
             this._debytexLineGrid?.classList.remove(FOUR_LINE_GRID_CLASS);
             this._debytexLineGrid = null;
         });

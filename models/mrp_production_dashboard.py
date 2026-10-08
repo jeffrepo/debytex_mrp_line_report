@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 
 from ..services.calculations import compute_production
 from ..services.dashboard import merge_capacity_orders, move_dashboard_order
+from ..services.shift_timing import format_duration
 
 
 class MrpProduction(models.Model):
@@ -408,6 +409,9 @@ class MrpProduction(models.Model):
         shift = self._dashboard_shift_label(cutoff_datetime)
         if snapshot_line and snapshot_line.shift_label:
             shift = snapshot_line.shift_label
+        effective_timer = self._dashboard_effective_timer(
+            production, cutoff_datetime
+        )
 
         return {
             "source_type": source_type,
@@ -432,6 +436,37 @@ class MrpProduction(models.Model):
             "estimated_finish": self._format_dashboard_datetime(
                 computed["estimated_finish"]
             ),
+            "effective_time_available": bool(effective_timer["shift_id"]),
+            "effective_time_shift_id": effective_timer["shift_id"],
+            "effective_time_state": effective_timer["state"],
+            "effective_time_seconds": effective_timer["seconds"],
+            "effective_time_text": format_duration(effective_timer["seconds"]),
+        }
+
+    @api.model
+    def _dashboard_effective_timer(self, production, sampled_at):
+        shifts = production.line_report_shift_history_ids
+        workcenter_shifts = shifts.filtered(
+            lambda shift: shift.workcenter_id == production.workcenter_id
+        )
+        relevant_shifts = workcenter_shifts or shifts
+        active_shifts = relevant_shifts.filtered(
+            lambda shift: shift.state in ("running", "paused")
+        )
+        shift = (
+            active_shifts.sorted(
+                key=lambda item: (item.started_at, item.id), reverse=True
+            )[:1]
+            or relevant_shifts.sorted(
+                key=lambda item: (item.started_at, item.id), reverse=True
+            )[:1]
+        )
+        if not shift:
+            return {"state": "closed", "seconds": 0, "shift_id": False}
+        return {
+            "state": shift.state,
+            "seconds": shift._elapsed_seconds_at(sampled_at),
+            "shift_id": shift.id,
         }
 
     @api.model
@@ -465,6 +500,11 @@ class MrpProduction(models.Model):
             ),
             "remaining_time_text": "",
             "estimated_finish": "",
+            "effective_time_available": False,
+            "effective_time_shift_id": False,
+            "effective_time_state": "closed",
+            "effective_time_seconds": 0,
+            "effective_time_text": format_duration(0),
         }
 
     @api.model
