@@ -23,9 +23,12 @@ las líneas de producción de Debytex/ECOWOOL.
 - Cada tarjeta del tablero conserva la agrupación por línea y muestra el
   resumen operativo del reporte para su orden: turno, cliente, producto,
   orden/lote, especificación, color, rollos y tiempo restante.
-- Las órdenes iniciadas desde **Capacidad por centro** aparecen primero en
-  **Producción en Tiempo Real** mientras su turno permanezca activo, aunque el
-  centro ya tenga cuatro o más órdenes visibles.
+- Las órdenes iniciadas desde **Capacidad por centro** permanecen incluidas en
+  **Producción en Tiempo Real** mientras su turno esté activo, aunque el centro
+  ya tenga cuatro o más órdenes visibles.
+- La ventana **Orden** del tablero permite asignar una posición `1…N` a cada
+  orden dentro de su centro. La secuencia se guarda en Odoo y es compartida por
+  todos los usuarios sin modificar el diseño principal del tablero.
 - En órdenes parciales, solicitado, producido, faltantes y tiempo restante se
   calculan sobre toda la cadena: demanda inicial y producción acumulada.
 - El detalle de cada orden en el tablero permite imprimir un PDF individual

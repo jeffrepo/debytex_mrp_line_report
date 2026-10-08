@@ -32,3 +32,17 @@ def merge_capacity_orders(dashboard_data, capacity_groups):
             list(capacity_group.get("ordenes", [])) + group["ordenes"]
         )
     return result
+
+
+def move_dashboard_order(ordered_ids, production_id, position):
+    """Move one production to a one-based position and keep unique IDs."""
+    unique_ids = []
+    for record_id in ordered_ids:
+        if record_id not in unique_ids:
+            unique_ids.append(record_id)
+    if production_id not in unique_ids:
+        return unique_ids
+    unique_ids.remove(production_id)
+    target_index = max(0, min(int(position or 1) - 1, len(unique_ids)))
+    unique_ids.insert(target_index, production_id)
+    return unique_ids

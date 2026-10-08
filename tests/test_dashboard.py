@@ -1,6 +1,6 @@
 import unittest
 
-from services.dashboard import merge_capacity_orders
+from services.dashboard import merge_capacity_orders, move_dashboard_order
 
 
 class TestCapacityDashboard(unittest.TestCase):
@@ -44,6 +44,18 @@ class TestCapacityDashboard(unittest.TestCase):
 
         self.assertEqual(result[20]["workcenter_name"], "Línea B")
         self.assertEqual(result[20]["ordenes"], [{"id": 8}])
+
+    def test_order_can_be_moved_to_a_one_based_position(self):
+        self.assertEqual(
+            move_dashboard_order([10, 20, 30, 40], 30, 1),
+            [30, 10, 20, 40],
+        )
+
+    def test_position_is_clamped_and_duplicate_ids_are_removed(self):
+        self.assertEqual(
+            move_dashboard_order([10, 20, 20, 30], 10, 99),
+            [20, 30, 10],
+        )
 
 
 if __name__ == "__main__":

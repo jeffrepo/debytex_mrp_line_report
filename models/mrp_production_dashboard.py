@@ -4,19 +4,35 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 from ..services.calculations import compute_production
-from ..services.dashboard import merge_capacity_orders
+from ..services.dashboard import merge_capacity_orders, move_dashboard_order
 
 
 class MrpProduction(models.Model):
     _inherit = "mrp.production"
 
+    line_report_dashboard_sequence = fields.Integer(
+        string="Secuencia en Producción en Tiempo Real",
+        default=0,
+        copy=False,
+        index=True,
+    )
+
     @api.model
     def get_dashboard_data(self):
         """Add the report-style summary to each order from custom_novici."""
         dashboard_data = super().get_dashboard_data()
+        for workcenter_id, group in (
+            self._line_report_dashboard_sequence_groups(limit=4).items()
+        ):
+            dashboard_data[workcenter_id] = group
         dashboard_data = merge_capacity_orders(
             dashboard_data, self._line_report_capacity_dashboard_groups()
         )
+        for group in dashboard_data.values():
+            group["ordenes"] = sorted(
+                group.get("ordenes", []),
+                key=self._line_report_dashboard_payload_sort_key,
+            )
         production_ids = [
             order["id"]
             for workcenter in dashboard_data.values()
@@ -30,6 +46,118 @@ class MrpProduction(models.Model):
                     order.get("id"), self._empty_dashboard_summary(order)
                 )
         return dashboard_data
+
+    @api.model
+    def _line_report_dashboard_productions(self, workcenter_id=None):
+        domain = [("state", "in", ("confirmed", "progress", "to_close"))]
+        if workcenter_id is not None:
+            domain.append(("workcenter_id", "=", workcenter_id))
+        return self.sudo().search(domain)
+
+    @api.model
+    def _line_report_dashboard_production_sort_key(self, production):
+        sequence = production.line_report_dashboard_sequence or 0
+        return (
+            production.workcenter_id.id or 0,
+            sequence <= 0,
+            sequence if sequence > 0 else 0,
+            -int(production.dashboard_priority or 0),
+            production.state != "progress",
+            production.create_date
+            or fields.Datetime.to_datetime("1970-01-01 00:00:00"),
+            production.id,
+        )
+
+    @api.model
+    def _line_report_dashboard_payload_sort_key(self, order):
+        sequence = order.get("dashboard_sequence") or 0
+        return (
+            sequence <= 0,
+            sequence if sequence > 0 else 0,
+            -int(order.get("dashboard_priority") or 0),
+            order.get("state") != "progress",
+            order.get("dashboard_created_at") or "",
+            order.get("id") or 0,
+        )
+
+    @api.model
+    def _line_report_dashboard_sequence_groups(self, limit=None):
+        groups = {}
+        productions = self._line_report_dashboard_productions().sorted(
+            key=self._line_report_dashboard_production_sort_key
+        )
+        for production in productions:
+            workcenter = production.workcenter_id
+            workcenter_id = workcenter.id or 0
+            group = groups.setdefault(
+                workcenter_id,
+                {
+                    "id": workcenter_id,
+                    "workcenter_name": (
+                        workcenter.name if workcenter else "Sin línea asignada"
+                    ),
+                    "ordenes": [],
+                },
+            )
+            if limit and len(group["ordenes"]) >= limit:
+                continue
+            group["ordenes"].append(
+                self._line_report_dashboard_order_payload(production)
+            )
+        return groups
+
+    @api.model
+    def get_dashboard_sequence_options(self, workcenter_id):
+        try:
+            workcenter_id = int(workcenter_id)
+        except (TypeError, ValueError):
+            return []
+        productions = self._line_report_dashboard_productions(
+            workcenter_id
+        ).sorted(key=self._line_report_dashboard_production_sort_key)
+        return [
+            {
+                "id": production.id,
+                "name": production.name,
+                "label": "%s — %s"
+                % (
+                    production.name,
+                    production.sale_order_id.name
+                    if production.sale_order_id
+                    else production.origin or production.product_id.display_name,
+                ),
+                "position": position,
+            }
+            for position, production in enumerate(productions, start=1)
+        ]
+
+    @api.model
+    def update_dashboard_sequence(self, workcenter_id, production_id, position):
+        try:
+            workcenter_id = int(workcenter_id)
+            production_id = int(production_id)
+            position = int(position)
+        except (TypeError, ValueError):
+            return {"success": False, "message": _("Datos de orden inválidos.")}
+
+        productions = self._line_report_dashboard_productions(
+            workcenter_id
+        ).sorted(key=self._line_report_dashboard_production_sort_key)
+        if production_id not in productions.ids:
+            return {
+                "success": False,
+                "message": _("La orden no pertenece al centro seleccionado."),
+            }
+        ordered_ids = move_dashboard_order(
+            productions.ids, production_id, position
+        )
+        ordered_productions = self.sudo().browse(ordered_ids)
+        for sequence, production in enumerate(ordered_productions, start=1):
+            production.line_report_dashboard_sequence = sequence
+        return {
+            "success": True,
+            "message": _("Secuencia de producción actualizada."),
+        }
 
     @api.model
     def _line_report_capacity_dashboard_groups(self):
@@ -148,6 +276,11 @@ class MrpProduction(models.Model):
             ),
             "notas": production.notas_fabricacion or "",
             "dashboard_priority": str(production.dashboard_priority or 0),
+            "dashboard_sequence": production.line_report_dashboard_sequence or 0,
+            "dashboard_created_at": fields.Datetime.to_string(
+                production.create_date
+            ),
+            "state": production.state,
             "componentes": components,
             "rollos": rolls,
             "turnos": turns,

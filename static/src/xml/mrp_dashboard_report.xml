@@ -3,6 +3,72 @@
     <t t-name="debytex_mrp_line_report.MrpDashboardReport"
        t-inherit="custom_novici.MrpDashboard"
        t-inherit-mode="extension">
+        <xpath expr="//button[contains(@class, 'btn-priority')]" position="replace">
+            <button type="button" class="btn-priority" t-on-click="openPriorityModal">
+                ↕ Orden
+            </button>
+        </xpath>
+
+        <xpath expr="//div[contains(@t-att-class, 'showPriorityModal')]" position="replace">
+            <div t-att-class="state.showPriorityModal ? 'dash-overlay show' : 'dash-overlay'"
+                 t-on-click="closePriorityModal">
+                <div class="dash-modal" t-on-click.stop="">
+                    <h2>⚙️ Ajustar orden</h2>
+                    <div class="modal-form">
+                        <label>🏭 Línea</label>
+                        <select t-model="state.selectedWorkcenter"
+                                t-on-change="onDashboardSequenceWorkcenterChange">
+                            <option value="">-- Selecciona --</option>
+                            <option t-foreach="state.workcenters"
+                                    t-as="wc"
+                                    t-key="wc.id"
+                                    t-att-value="wc.id">
+                                <t t-esc="wc.workcenter_name"/>
+                            </option>
+                        </select>
+
+                        <label>🛠 Orden</label>
+                        <select t-model="state.selectedOrder"
+                                t-on-change="onDashboardSequenceOrderChange"
+                                t-att-disabled="state.dashboardSequenceLoading">
+                            <option value="">
+                                <t t-if="state.dashboardSequenceLoading">Cargando…</t>
+                                <t t-else="">-- Selecciona --</t>
+                            </option>
+                            <option t-foreach="state.dashboardSequenceOrders"
+                                    t-as="sequenceOrder"
+                                    t-key="sequenceOrder.id"
+                                    t-att-value="sequenceOrder.id">
+                                <t t-esc="sequenceOrder.label"/>
+                            </option>
+                        </select>
+
+                        <label>↕ Posición</label>
+                        <select t-model="state.dashboardSequencePosition"
+                                t-att-disabled="!state.selectedOrder">
+                            <option t-foreach="state.dashboardSequenceOrders"
+                                    t-as="sequenceOrder"
+                                    t-key="'position-' + sequenceOrder.position"
+                                    t-att-value="sequenceOrder.position">
+                                <t t-esc="sequenceOrder.position"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-save"
+                                t-on-click="saveDashboardSequence"
+                                t-att-disabled="state.dashboardSequenceSaving">
+                            <t t-if="state.dashboardSequenceSaving">Guardando…</t>
+                            <t t-else="">💾 Guardar</t>
+                        </button>
+                        <button class="btn-cancel" t-on-click="closePriorityModal">
+                            ✖ Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+
         <xpath expr="//div[contains(@t-attf-class, 'order-card')]" position="replace">
             <div t-attf-class="order-card debytex-order-summary-card priority-#{mo.dashboard_priority}"
                  t-on-click="() => this.openDetail(mo)">
