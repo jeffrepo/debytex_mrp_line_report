@@ -23,6 +23,9 @@ las líneas de producción de Debytex/ECOWOOL.
 - Cada tarjeta del tablero conserva la agrupación por línea y muestra el
   resumen operativo del reporte para su orden: turno, cliente, producto,
   orden/lote, especificación, color, rollos y tiempo restante.
+- Las órdenes iniciadas desde **Capacidad por centro** aparecen primero en
+  **Producción en Tiempo Real** mientras su turno permanezca activo, aunque el
+  centro ya tenga cuatro o más órdenes visibles.
 - En órdenes parciales, solicitado, producido, faltantes y tiempo restante se
   calculan sobre toda la cadena: demanda inicial y producción acumulada.
 - El detalle de cada orden en el tablero permite imprimir un PDF individual
