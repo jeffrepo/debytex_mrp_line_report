@@ -42,8 +42,130 @@ patch(MrpDashboard.prototype, {
         this.state.lineReportPrinting = false;
         this.state.lineReportError = "";
         this.state.selectedLineReport = null;
+        this.state.dashboardSequenceOrders = [];
+        this.state.dashboardSequencePosition = "1";
+        this.state.dashboardSequenceLoading = false;
+        this.state.dashboardSequenceSaving = false;
         this._lineReportRequestToken = 0;
+        this._dashboardSequenceRequestToken = 0;
         this._debytexLineGrid = null;
+
+        const originalOpenPriorityModal = this.openPriorityModal;
+        const originalClosePriorityModal = this.closePriorityModal;
+
+        this.openPriorityModal = () => {
+            this.state.selectedWorkcenter = null;
+            this.state.selectedOrder = null;
+            this.state.dashboardSequenceOrders = [];
+            this.state.dashboardSequencePosition = "1";
+            originalOpenPriorityModal();
+        };
+
+        this.closePriorityModal = () => {
+            this._dashboardSequenceRequestToken++;
+            originalClosePriorityModal();
+            this.state.dashboardSequenceOrders = [];
+            this.state.dashboardSequenceLoading = false;
+            this.state.dashboardSequenceSaving = false;
+        };
+
+        this.loadDashboardSequenceOrders = async (workcenterId) => {
+            const requestToken = ++this._dashboardSequenceRequestToken;
+            if (!workcenterId) {
+                this.state.dashboardSequenceOrders = [];
+                return;
+            }
+            this.state.dashboardSequenceLoading = true;
+            try {
+                const orders = await this.orm.call(
+                    "mrp.production",
+                    "get_dashboard_sequence_options",
+                    [Number(workcenterId)]
+                );
+                if (requestToken === this._dashboardSequenceRequestToken) {
+                    this.state.dashboardSequenceOrders = orders;
+                }
+            } catch (error) {
+                console.error("Error al cargar la secuencia del tablero:", error);
+                this.notification.add(
+                    "No fue posible cargar las órdenes del centro",
+                    { type: "danger" }
+                );
+            } finally {
+                if (requestToken === this._dashboardSequenceRequestToken) {
+                    this.state.dashboardSequenceLoading = false;
+                }
+            }
+        };
+
+        this.onDashboardSequenceWorkcenterChange = async (event) => {
+            this.state.selectedWorkcenter = event.target.value;
+            this.state.selectedOrder = null;
+            this.state.dashboardSequencePosition = "1";
+            await this.loadDashboardSequenceOrders(event.target.value);
+        };
+
+        this.onDashboardSequenceOrderChange = (event) => {
+            this.state.selectedOrder = event.target.value;
+            const selectedOrder = this.state.dashboardSequenceOrders.find(
+                (order) => order.id === Number(event.target.value)
+            );
+            this.state.dashboardSequencePosition = String(
+                selectedOrder?.position || 1
+            );
+        };
+
+        this.saveDashboardSequence = async () => {
+            if (
+                !this.state.selectedWorkcenter ||
+                !this.state.selectedOrder ||
+                this.state.dashboardSequenceSaving
+            ) {
+                this.notification.add(
+                    "Seleccione el centro y la orden que desea acomodar",
+                    { type: "warning" }
+                );
+                return;
+            }
+            this.state.dashboardSequenceSaving = true;
+            try {
+                const result = await this.orm.call(
+                    "mrp.production",
+                    "update_dashboard_sequence",
+                    [
+                        Number(this.state.selectedWorkcenter),
+                        Number(this.state.selectedOrder),
+                        Number(this.state.dashboardSequencePosition),
+                    ]
+                );
+                if (!result?.success) {
+                    this.notification.add(
+                        result?.message || "No fue posible guardar el orden",
+                        { type: "danger" }
+                    );
+                    return;
+                }
+                const data = await this.orm.call(
+                    "mrp.production",
+                    "get_dashboard_data",
+                    []
+                );
+                this.state.workcenters = Object.values(data);
+                this.state.last_update = new Date().toLocaleTimeString();
+                this.notification.add(result.message, { type: "success" });
+                this.closePriorityModal();
+            } catch (error) {
+                console.error("Error al guardar la secuencia del tablero:", error);
+                this.notification.add(
+                    error?.data?.message ||
+                        error?.message ||
+                        "No fue posible guardar el orden",
+                    { type: "danger" }
+                );
+            } finally {
+                this.state.dashboardSequenceSaving = false;
+            }
+        };
 
         this._updateFourLineLayout = () => {
             const cards = [...document.querySelectorAll(SUMMARY_CARD_SELECTOR)];
