@@ -1039,8 +1039,6 @@ class MrpCenterCapacityPlanLine(models.Model):
         "product_attribute_value_id",
         "execution_production_id.fecha_inicio_turno",
         "execution_production_id.state",
-        "execution_production_id.rollo_ids.active",
-        "execution_production_id.rollo_ids.etiquetado",
         "execution_production_id.turno_cierre_ids",
     )
     def _compute_shift_actions(self):
@@ -1057,9 +1055,6 @@ class MrpCenterCapacityPlanLine(models.Model):
                 line.plan_state == "closed"
                 and production
                 and not production.fecha_inicio_turno
-                and production.rollo_ids.filtered(
-                    lambda roll: roll.active and roll.etiquetado
-                )
             )
             line.can_send_to_stock = bool(
                 line.plan_state == "closed"

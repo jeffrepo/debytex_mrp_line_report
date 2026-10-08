@@ -82,8 +82,10 @@ las líneas de producción de Debytex/ECOWOOL.
   activa antes de registrar el consumo prorrateado.
 - Cada fila permite **Registrar rollo** mientras el turno está activo y
   **Reetiquetar rollo** después de finalizarlo, conservando la validación y el
-  PIN de supervisor de `custom_novici`. Las impresiones y las demás acciones
-  operativas se ejecutan desde los botones generales del encabezado.
+  PIN de supervisor de `custom_novici`. El botón de reetiquetado permanece
+  disponible en cada línea cerrada para acceder también a rollos históricos.
+  Las impresiones y las demás acciones operativas se ejecutan desde los botones
+  generales del encabezado.
 - El encabezado ofrece también acciones generales para enviar a almacén todas
   las órdenes pendientes, imprimir todas las órdenes y generar un único reporte
   final o archivo Excel consolidado con los rollos de toda la propuesta.
