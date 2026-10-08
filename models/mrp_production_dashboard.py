@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 from ..services.calculations import compute_production
+from ..services.dashboard import merge_capacity_orders
 
 
 class MrpProduction(models.Model):
@@ -13,6 +14,9 @@ class MrpProduction(models.Model):
     def get_dashboard_data(self):
         """Add the report-style summary to each order from custom_novici."""
         dashboard_data = super().get_dashboard_data()
+        dashboard_data = merge_capacity_orders(
+            dashboard_data, self._line_report_capacity_dashboard_groups()
+        )
         production_ids = [
             order["id"]
             for workcenter in dashboard_data.values()
@@ -26,6 +30,130 @@ class MrpProduction(models.Model):
                     order.get("id"), self._empty_dashboard_summary(order)
                 )
         return dashboard_data
+
+    @api.model
+    def _line_report_capacity_dashboard_groups(self):
+        """Serialize every order currently running from Capacity by Center."""
+        lines = self.env["debytex.mrp.center.capacity.plan.line"].sudo().search(
+            [
+                ("plan_id.state", "=", "started"),
+                ("execution_production_id", "!=", False),
+            ],
+            order="plan_id desc, sequence, id",
+        )
+        groups = {}
+        included_production_ids = set()
+        for line in lines:
+            production = line.execution_production_id
+            if (
+                not production
+                or production.id in included_production_ids
+                or production.state not in ("confirmed", "progress", "to_close")
+                or not production.fecha_inicio_turno
+            ):
+                continue
+            workcenter = line.plan_id.workcenter_id or production.workcenter_id
+            if not workcenter:
+                continue
+            included_production_ids.add(production.id)
+            group = groups.setdefault(
+                workcenter.id,
+                {
+                    "id": workcenter.id,
+                    "workcenter_name": workcenter.name or "Sin línea asignada",
+                    "ordenes": [],
+                },
+            )
+            group["ordenes"].append(
+                self._line_report_dashboard_order_payload(production)
+            )
+        return groups
+
+    @api.model
+    def _line_report_dashboard_order_payload(self, production):
+        """Match the card payload produced by custom_novici's dashboard."""
+        components = [
+            {
+                "producto": move.product_id.display_name or "",
+                "planificado": move.product_uom_qty,
+                "real": move.consumo_real or move.quantity or 0.0,
+                "uom": move.product_uom.name or "",
+            }
+            for move in production.move_raw_ids.filtered(
+                lambda item: item.state != "cancel"
+            )
+        ]
+        rolls = [
+            {
+                "numero": roll.numero_rollo or "",
+                "peso": roll.peso_rollo or 0.0,
+            }
+            for roll in production.rollo_ids.filtered("active")[:20]
+        ]
+        turns = [
+            {
+                "nombre": turn.name or "",
+                "inicio": (
+                    turn.fecha_inicio.strftime("%d/%m %H:%M")
+                    if turn.fecha_inicio
+                    else ""
+                ),
+                "cierre": (
+                    turn.fecha_cierre.strftime("%d/%m %H:%M")
+                    if turn.fecha_cierre
+                    else ""
+                ),
+                "rollos": turn.total_rollos_turno or 0,
+                "kg": turn.peso_total_kg or 0.0,
+            }
+            for turn in production.turno_cierre_ids
+        ]
+        sale_order = production.sale_order_id
+        return {
+            "id": production.id,
+            "name": production.name,
+            "sale_order": (
+                sale_order.name if sale_order else production.origin or "N/A"
+            ),
+            "cliente": sale_order.partner_id.name if sale_order else "",
+            "codigo_cliente": production.codigo_cliente_mrp or "",
+            "product_name": (
+                production.product_id.name
+                or production.product_id.display_name
+            ),
+            "product_attributes": [
+                {
+                    "name": value.attribute_id.name,
+                    "value": value.name,
+                }
+                for value in (
+                    production.product_id.product_template_attribute_value_ids
+                )
+            ],
+            "qty_planificada": production.product_qty,
+            "qty_producida": production.total_rollos_fabricados,
+            "porcentaje": f"{production.percent_produced_global:.1f}%",
+            "avance": production.percent_produced_global,
+            "state_label": production.state_label or production.state,
+            "turno_abierto": bool(production.fecha_inicio_turno),
+            "fecha_inicio": (
+                production.fecha_inicio_turno.strftime("%d/%m/%Y %H:%M")
+                if production.fecha_inicio_turno
+                else ""
+            ),
+            "fecha_cierre": (
+                production.fecha_cierre.strftime("%d/%m/%Y %H:%M")
+                if production.fecha_cierre
+                else ""
+            ),
+            "notas": production.notas_fabricacion or "",
+            "dashboard_priority": str(production.dashboard_priority or 0),
+            "componentes": components,
+            "rollos": rolls,
+            "turnos": turns,
+            "total_rollos": production.total_rollos_fabricados,
+            "peso_total": production.peso_total_rollos_fabricados,
+        }
 
     @api.model
     def _get_line_report_dashboard_summaries(self, production_ids):
