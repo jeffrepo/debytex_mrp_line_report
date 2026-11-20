@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_center_capacity_reprocess_wizard_form" model="ir.ui.view">
+        <field name="name">debytex.mrp.center.capacity.reprocess.wizard.form</field>
+        <field name="model">debytex.mrp.center.capacity.reprocess.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generar reproceso">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Revise el desglose calculado. Puede corregir el ancho o el
+                        número de rollos antes de crear una sola orden de reproceso.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="plan_id"/>
+                            <field name="workcenter_id"/>
+                        </group>
+                        <group>
+                            <field name="product_name"/>
+                            <field name="attribute_summary"/>
+                        </group>
+                    </group>
+                    <separator string="Líneas de resultado"/>
+                    <field name="line_ids" nolabel="1">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="sequence" column_invisible="True"/>
+                            <field name="result_type" force_save="1"/>
+                            <field name="width_cm"/>
+                            <field name="roll_quantity"/>
+                            <field name="meters_per_roll"/>
+                            <field name="grammage_g_m2"/>
+                            <field name="estimated_weight_kg" readonly="1"
+                                   sum="Peso total"/>
+                        </list>
+                    </field>
+                    <group col="4" class="mt-3">
+                        <field name="total_width_cm" readonly="1"/>
+                        <field name="total_weight_kg" readonly="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create_reprocess_order"
+                            string="Crear orden de reproceso"
+                            type="object"
+                            class="btn-primary"
+                            confirm="Se creará una orden de fabricación en borrador con estas líneas. ¿Desea continuar?"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

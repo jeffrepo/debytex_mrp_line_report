@@ -2,6 +2,7 @@ import unittest
 
 from services.capacity import (
     compute_quantity_allocation,
+    compute_reprocess_results,
     compute_width_capacity,
     has_required_attribute_values,
     maximum_lanes,
@@ -117,6 +118,37 @@ class TestWidthCapacity(unittest.TestCase):
 
     def test_proration_without_weights_allocates_nothing(self):
         self.assertEqual(prorate_quantity(25, [0, 0]), [0.0, 0.0])
+
+    def test_reprocess_splits_fixed_trim_and_includes_free_width(self):
+        results = compute_reprocess_results(
+            fixed_trim_width_cm=20,
+            free_width_cm=10,
+            grammage_g_m2=12,
+            meters_per_roll=1000,
+            roll_quantity=2,
+        )
+
+        self.assertEqual([line["width_cm"] for line in results], [10, 10, 10])
+        self.assertEqual(
+            [line["result_type"] for line in results],
+            ["fixed_left", "fixed_right", "free"],
+        )
+        self.assertAlmostEqual(
+            sum(line["estimated_weight_kg"] for line in results), 7.2
+        )
+
+    def test_reprocess_omits_zero_width_results(self):
+        results = compute_reprocess_results(
+            fixed_trim_width_cm=0,
+            free_width_cm=15,
+            grammage_g_m2=20,
+            meters_per_roll=500,
+            roll_quantity=1,
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["result_type"], "free")
+        self.assertEqual(results[0]["estimated_weight_kg"], 1.5)
 
 if __name__ == "__main__":
     unittest.main()

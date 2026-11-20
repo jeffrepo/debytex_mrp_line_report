@@ -69,6 +69,16 @@
                             class="btn-primary"
                             invisible="state != 'started'"
                             confirm="Se finalizará el turno de todas las órdenes incluidas. ¿Desea continuar?"/>
+                    <button name="action_open_reprocess_wizard"
+                            string="Generar reproceso"
+                            type="object"
+                            class="btn-warning"
+                            invisible="not can_generate_reprocess"/>
+                    <button name="action_open_reprocess_production"
+                            string="Orden de reproceso"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="not reprocess_production_id"/>
                     <button name="action_send_all_to_stock"
                             string="Enviar todas a Almacén"
                             type="object"
@@ -91,6 +101,8 @@
                 </header>
                 <sheet>
                     <field name="company_id" invisible="1"/>
+                    <field name="can_generate_reprocess" invisible="1"/>
+                    <field name="reprocess_production_id" invisible="1"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name"/></h1>
@@ -182,6 +194,9 @@
 
                     <separator string="Distribución visual del eje"/>
                     <field name="capacity_preview_html" widget="html" nolabel="1" readonly="1"/>
+
+                    <separator string="Reproceso"/>
+                    <field name="reprocess_preview_html" widget="html" nolabel="1" readonly="1"/>
 
                     <separator string="Órdenes propuestas"/>
                     <field name="line_ids"

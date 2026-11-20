@@ -38,6 +38,54 @@ def compute_width_capacity(*, useful_width_cm, allocations=()):
     }
 
 
+def compute_reprocess_results(
+    *,
+    fixed_trim_width_cm,
+    free_width_cm,
+    grammage_g_m2,
+    meters_per_roll,
+    roll_quantity,
+):
+    """Build the estimated reprocess outputs for one width layout.
+
+    The fixed trim is physically collected on both sides of the shaft, so it
+    is represented as two independent result lines.  The unused useful width
+    is a third result when there is any space left.  Quantities are expressed
+    in kilograms using the fabric area and the common grammage selected on the
+    capacity proposal.
+    """
+    fixed_trim = _non_negative(fixed_trim_width_cm)
+    free_width = _non_negative(free_width_cm)
+    grammage = _non_negative(grammage_g_m2)
+    meters = _non_negative(meters_per_roll)
+    rolls = _non_negative(roll_quantity)
+
+    def _result(result_type, label, width_cm):
+        weight_kg = grammage * width_cm * meters * rolls / 100000.0
+        return {
+            "result_type": result_type,
+            "label": label,
+            "width_cm": width_cm,
+            "roll_quantity": rolls,
+            "meters_per_roll": meters,
+            "grammage_g_m2": grammage,
+            "estimated_weight_kg": weight_kg,
+        }
+
+    results = []
+    if fixed_trim:
+        side_width = fixed_trim / 2.0
+        results.extend(
+            (
+                _result("fixed_left", "Refile fijo izquierdo", side_width),
+                _result("fixed_right", "Refile fijo derecho", side_width),
+            )
+        )
+    if free_width:
+        results.append(_result("free", "Ancho útil sobrante", free_width))
+    return results
+
+
 def maximum_lanes(*, useful_width_cm, product_width_cm):
     """Return how many equal-width product lanes fit in the useful width."""
     useful_width = _non_negative(useful_width_cm)
