@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_production_form_capacity_reprocess" model="ir.ui.view">
+        <field name="name">mrp.production.form.capacity.reprocess</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="capacity_reprocess_plan_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Resultados de reproceso"
+                      name="capacity_reprocess_results"
+                      invisible="not capacity_reprocess_plan_id">
+                    <group>
+                        <field name="capacity_reprocess_plan_id"
+                               readonly="1"
+                               options="{'no_create': True}"/>
+                    </group>
+                    <field name="capacity_reprocess_result_ids" readonly="1">
+                        <list create="0" delete="0" edit="0">
+                            <field name="sequence" column_invisible="True"/>
+                            <field name="result_type"/>
+                            <field name="width_cm"/>
+                            <field name="roll_quantity"/>
+                            <field name="meters_per_roll"/>
+                            <field name="grammage_g_m2"/>
+                            <field name="estimated_weight_kg" sum="Peso total"/>
+                        </list>
+                    </field>
+                    <div class="alert alert-info mt-3" role="alert">
+                        Estas líneas conservan el desglose del refile fijo y del
+                        ancho sobrante. La cantidad total de la orden está expresada
+                        en kilogramos y el inventario se actualizará al completar la
+                        orden mediante el flujo normal de fabricación.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

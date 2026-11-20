@@ -10,6 +10,7 @@ from odoo.tools import float_compare, float_round
 
 from ..services.capacity import (
     compute_quantity_allocation,
+    compute_reprocess_results,
     compute_width_capacity,
     has_required_attribute_values,
     maximum_lanes,
@@ -171,6 +172,36 @@ class MrpCenterCapacityPlan(models.Model):
         compute="_compute_capacity_preview_html",
         sanitize=False,
     )
+    reprocess_roll_quantity = fields.Float(
+        string="Rollos estimados de reproceso",
+        compute="_compute_reprocess_summary",
+        digits="Product Unit of Measure",
+    )
+    reprocess_total_width_cm = fields.Float(
+        string="Ancho total de reproceso (cm)",
+        compute="_compute_reprocess_summary",
+    )
+    reprocess_estimated_weight_kg = fields.Float(
+        string="Reproceso estimado (kg)",
+        compute="_compute_reprocess_summary",
+        digits=(16, 3),
+    )
+    reprocess_preview_html = fields.Html(
+        string="Reproceso estimado",
+        compute="_compute_reprocess_preview_html",
+        sanitize=False,
+    )
+    reprocess_production_id = fields.Many2one(
+        "mrp.production",
+        string="Orden de reproceso",
+        readonly=True,
+        copy=False,
+        ondelete="set null",
+    )
+    can_generate_reprocess = fields.Boolean(
+        string="Puede generar reproceso",
+        compute="_compute_reprocess_summary",
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -326,6 +357,52 @@ class MrpCenterCapacityPlan(models.Model):
             "name": self.display_name,
             "res_model": self._name,
             "res_id": self.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
+    def action_open_reprocess_wizard(self):
+        """Review the calculated outputs before creating one reprocess MO."""
+        self.ensure_one()
+        if self.reprocess_production_id:
+            return self.action_open_reprocess_production()
+        if self.state != "closed":
+            raise UserError(
+                _("Finalice el turno antes de generar el reproceso.")
+            )
+        if not self.can_generate_reprocess:
+            raise UserError(
+                _(
+                    "No existe ancho de refile o sobrante para generar "
+                    "reproceso."
+                )
+            )
+        wizard = self.env[
+            "debytex.mrp.center.capacity.reprocess.wizard"
+        ].create_from_plan(self)
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Generar reproceso - %s") % self.display_name,
+            "res_model": "debytex.mrp.center.capacity.reprocess.wizard",
+            "res_id": wizard.id,
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "debytex_mrp_line_report."
+                "view_mrp_center_capacity_reprocess_wizard_form"
+            ).id,
+            "target": "new",
+        }
+
+    def action_open_reprocess_production(self):
+        self.ensure_one()
+        production = self.reprocess_production_id.exists()
+        if not production:
+            raise UserError(_("Todavía no se ha generado la orden de reproceso."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": production.display_name,
+            "res_model": "mrp.production",
+            "res_id": production.id,
             "view_mode": "form",
             "target": "current",
         }
@@ -807,6 +884,154 @@ class MrpCenterCapacityPlan(models.Model):
                     "".join(segments),
                     plan.fixed_trim_width_cm,
                     warning,
+                )
+            )
+
+    def _capacity_common_attribute_value(self, attribute_key):
+        self.ensure_one()
+        item = self.attribute_filter_ids.filtered(
+            lambda record: record.attribute_key == attribute_key
+        )[:1]
+        return item.value_id
+
+    def _capacity_common_attribute_number(self, attribute_key):
+        self.ensure_one()
+        value = self._capacity_common_attribute_value(attribute_key)
+        if not value:
+            return 0.0
+        match = re.search(r"-?\d+(?:[.,]\d+)?", str(value.name or ""))
+        return float(match.group(0).replace(",", ".")) if match else 0.0
+
+    def _capacity_reprocess_roll_quantity(self):
+        """Use actual registered rolls, falling back to the planned maximum."""
+        self.ensure_one()
+        quantities = {}
+        if self.id and self.state == "closed":
+            turns = self._capacity_closed_turns()
+            rolls = self.env["produccion.rollo.line"].search(
+                [("turno_id", "in", turns.ids)]
+            )
+            for roll in rolls:
+                production_id = roll.production_id.id
+                quantities[production_id] = quantities.get(production_id, 0) + 1
+        if quantities:
+            return float(max(quantities.values()))
+        return max(self.line_ids.mapped("allocated_rolls") or [0.0])
+
+    def _capacity_reprocess_result_values(self, roll_quantity=None):
+        self.ensure_one()
+        rolls = (
+            self._capacity_reprocess_roll_quantity()
+            if roll_quantity is None
+            else roll_quantity
+        )
+        return compute_reprocess_results(
+            fixed_trim_width_cm=self.fixed_trim_width_cm,
+            free_width_cm=self.free_width_cm,
+            grammage_g_m2=self._capacity_common_attribute_number("weight"),
+            meters_per_roll=self._capacity_common_attribute_number(
+                "meters_per_roll"
+            ),
+            roll_quantity=rolls,
+        )
+
+    @api.depends(
+        "state",
+        "fixed_trim_width_cm",
+        "free_width_cm",
+        "attribute_filter_ids.attribute_key",
+        "attribute_filter_ids.value_id",
+        "line_ids.allocated_rolls",
+        "line_ids.execution_production_id",
+        "reprocess_production_id",
+    )
+    def _compute_reprocess_summary(self):
+        for plan in self:
+            results = plan._capacity_reprocess_result_values()
+            plan.reprocess_roll_quantity = (
+                results[0]["roll_quantity"] if results else 0.0
+            )
+            plan.reprocess_total_width_cm = sum(
+                result["width_cm"] for result in results
+            )
+            plan.reprocess_estimated_weight_kg = sum(
+                result["estimated_weight_kg"] for result in results
+            )
+            plan.can_generate_reprocess = bool(
+                plan.state == "closed"
+                and results
+                and plan.reprocess_estimated_weight_kg > 0
+                and not plan.reprocess_production_id
+            )
+
+    @api.depends(
+        "state",
+        "fixed_trim_width_cm",
+        "free_width_cm",
+        "reprocess_roll_quantity",
+        "reprocess_total_width_cm",
+        "reprocess_estimated_weight_kg",
+        "attribute_filter_ids.attribute_key",
+        "attribute_filter_ids.value_id",
+        "reprocess_production_id",
+    )
+    def _compute_reprocess_preview_html(self):
+        labels = dict(ATTRIBUTE_FILTER_SELECTION)
+        for plan in self:
+            results = plan._capacity_reprocess_result_values(
+                plan.reprocess_roll_quantity
+            )
+            if not results:
+                plan.reprocess_preview_html = (
+                    '<div class="alert alert-info mb-0">No hay ancho de '
+                    "refile o sobrante para reprocesar.</div>"
+                )
+                continue
+            attributes = []
+            for item in plan.attribute_filter_ids.filtered("value_id"):
+                attributes.append(
+                    "%s: %s"
+                    % (
+                        escape(labels.get(item.attribute_key, item.attribute_id.name)),
+                        escape(item.value_id.name),
+                    )
+                )
+            rows = []
+            for result in results:
+                rows.append(
+                    "<tr><td>%s</td><td class='text-end'>%.2f cm</td>"
+                    "<td class='text-end'>%.2f</td>"
+                    "<td class='text-end'>%.3f kg</td></tr>"
+                    % (
+                        escape(result["label"]),
+                        result["width_cm"],
+                        result["roll_quantity"],
+                        result["estimated_weight_kg"],
+                    )
+                )
+            status = (
+                _("Orden creada: %s") % plan.reprocess_production_id.display_name
+                if plan.reprocess_production_id
+                else _(
+                    "La orden podrá generarse cuando el turno esté finalizado."
+                )
+            )
+            plan.reprocess_preview_html = (
+                '<div class="card border-info mb-3"><div class="card-header">'
+                '<strong>Reproceso estimado</strong></div><div class="card-body">'
+                '<div class="mb-2">%s</div><table class="table table-sm mb-2">'
+                "<thead><tr><th>Resultado</th><th class='text-end'>Ancho</th>"
+                "<th class='text-end'>Rollos</th><th class='text-end'>Peso</th>"
+                "</tr></thead><tbody>%s</tbody><tfoot><tr><th>Total</th>"
+                "<th class='text-end'>%.2f cm</th><th></th>"
+                "<th class='text-end'>%.3f kg</th></tr></tfoot></table>"
+                '<small class="text-muted">%s</small></div></div>'
+                % (
+                    escape(" · ".join(attributes)),
+                    "".join(rows),
+                    plan.reprocess_total_width_cm,
+                    plan.reprocess_estimated_weight_kg,
+                    escape(status),
                 )
             )
 
